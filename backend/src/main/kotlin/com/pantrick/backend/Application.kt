@@ -17,10 +17,11 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 
 fun main() {
-    val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
+    val port = System.getenv("PORT")?.toIntOrNull() ?: 8081
     embeddedServer(Netty, port = port, host = "0.0.0.0", module = Application::module)
         .start(wait = true)
 }
+
 
 fun Application.module(userRepository: UserRepository = InMemoryUserRepository()) {
     install(ContentNegotiation) {
