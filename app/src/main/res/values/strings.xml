@@ -1,3 +1,33 @@
 <resources>
     <string name="app_name">Pantrick</string>
+    <string name="tagline">Cook smarter, waste less.</string>
+    <string name="screen_title">Welcome back</string>
+    <string name="screen_subtitle">Sign in to access your pantry and smart recipes.</string>
+    <string name="email_label">Email Address</string>
+    <string name="email_placeholder">alex@example.com</string>
+    <string name="password_label">Password</string>
+    <string name="password_placeholder">Enter your password</string>
+    <string name="remember_me">Remember me</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="log_in">Log In</string>
+    <string name="or_continue_with">or continue with</string>
+    <string name="google">Google</string>
+    <string name="apple">Apple</string>
+    <string name="dont_have_account">Don\u2019t have an account?\u0020</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="back_button_cd">Back</string>
+    <string name="profile_button_cd">Profile</string>
+    <string name="show_password_cd">Show password</string>
+    <string name="hide_password_cd">Hide password</string>
+    <string name="profile_coming_soon">Profile coming soon</string>
+    <string name="google_coming_soon">Google sign-in coming soon</string>
+    <string name="apple_coming_soon">Apple sign-in coming soon</string>
+    <string name="email_required">Email is required</string>
+    <string name="email_invalid">Enter a valid email address</string>
+    <string name="password_required">Password is required</string>
+    <string name="password_too_short">Password must be at least 8 characters</string>
+    <string name="auth_failed">Invalid email or password</string>
+    <string name="sign_up_title">Sign Up</string>
+    <string name="forgot_password_title">Forgot Password</string>
+    <string name="home_title">Home</string>
 </resources>
