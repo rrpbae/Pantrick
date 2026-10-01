@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp"
+    android:height="200dp"
+    android:viewportWidth="360"
+    android:viewportHeight="200">
+    <!-- Background Soft Cream Plate Area -->
+    <path
+        android:fillColor="#F2ECE4"
+        android:pathData="M0,0h360v200h-360z" />
+    <!-- Pasta Plate Silhouette -->
+    <path
+        android:fillColor="#E6DDD1"
+        android:pathData="M180,30 C90,30 50,75 50,110 C50,150 100,180 180,180 C260,180 310,150 310,110 C310,75 270,30 180,30 Z" />
+    <!-- Pasta Swirls -->
+    <path
+        android:fillColor="#F7D3C1"
+        android:pathData="M180,60 C130,60 100,85 100,110 C100,135 135,155 180,155 C225,155 260,135 260,110 C260,85 230,60 180,60 Z" />
+    <!-- Herb garnish flecks -->
+    <path
+        android:fillColor="#1E4B27"
+        android:fillAlpha="0.7"
+        android:pathData="M165,95 C168,90 174,93 171,97 Z M190,115 C194,112 196,118 191,120 Z M150,110 C154,107 156,113 151,115 Z M200,90 C204,87 207,92 202,95 Z" />
+</vector>

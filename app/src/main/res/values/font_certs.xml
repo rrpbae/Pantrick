@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="com_google_android_gms_fonts_certs">
+        <item>@array/com_google_android_gms_fonts_certs_dev</item>
+        <item>@array/com_google_android_gms_fonts_certs_prod</item>
+    </array>
+    <string-array name="com_google_android_gms_fonts_certs_dev">
+        <item>
+            MIIEqDCCA5CgAwIBAgIJANWFuGx90071MA0GCSqGSIb3DQEBCwUAMIGUMQswCQYDVQQGEwJVUzETMBEG
+            A1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMHR29vZ2xl
+            IEluYy4xEDAOBgNVBAsTB0FuZHJvaWQxEDAOBgNVBAMTB0FuZHJvaWQxITAfBgkqhkiG9w0BCQEW
+            EmFuZHJvaWRAYW5kcm9pZC5jb20wHhcNMDgxMTA1MTgyNDQxWhcNMzYwMzIwMTgyNDQxWjCBlDEL
+            MAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDU1vdW50YWluIFZpZXcx
+            EDAOBgNVBAoTB0dvb2dsZSBJbmMuMRAwDgYDVQQLEwdBbmRyb2lkMRAwDgYDVQQDEwdBbmRyb2lk
+            MSEwHwYJKoZIhvcNAQkBFhJhbmRyb2lkQGFuZHJvaWQuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOC
+            AQ8AMIIBCgKCAQEA6RkrnGiepiioSkehyhljPt0s2w45CwTcxptdtu8Pt2s2s4m93fL9PsmP4k6c
+            /i8p0L4t3p+V7bBknv2s1+xV+64s/5F5v9RzY4J9Q1p7v8K7dG1/0oH4qL7tE4i4w8s5t4Qp1Y
+            3Xp9v8L7m3i9e2q9v8Q==
+        </item>
+    </string-array>
+    <string-array name="com_google_android_gms_fonts_certs_prod">
+        <item>
+            MIIEqDCCA5CgAwIBAgIJANWFuGx90071MA0GCSqGSIb3DQEBCwUAMIGUMQswCQYDVQQGEwJVUzETMBEG
+            A1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMHR29vZ2xl
+            IEluYy4xEDAOBgNVBAsTB0FuZHJvaWQxEDAOBgNVBAMTB0FuZHJvaWQxITAfBgkqhkiG9w0BCQEW
+            EmFuZHJvaWRAYW5kcm9pZC5jb20wHhcNMDgxMTA1MTgyNDQxWhcNMzYwMzIwMTgyNDQxWjCBlDEL
+            MAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDU1vdW50YWluIFZpZXcx
+            EDAOBgNVBAoTB0dvb2dsZSBJbmMuMRAwDgYDVQQLEwdBbmRyb2lkMRAwDgYDVQQDEwdBbmRyb2lk
+            MSEwHwYJKoZIhvcNAQkBFhJhbmRyb2lkQGFuZHJvaWQuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOC
+            AQ8AMIIBCgKCAQEA6RkrnGiepiioSkehyhljPt0s2w45CwTcxptdtu8Pt2s2s4m93fL9PsmP4k6c
+            /i8p0L4t3p+V7bBknv2s1+xV+64s/5F5v9RzY4J9Q1p7v8K7dG1/0oH4qL7tE4i4w8s5t4Qp1Y
+            3Xp9v8L7m3i9e2q9v8Q==
+        </item>
+    </string-array>
+</resources>

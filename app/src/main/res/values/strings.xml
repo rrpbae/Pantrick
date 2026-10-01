@@ -128,7 +128,7 @@
     <string name="action_discard">Buang</string>
     <string name="action_cancel">Batal</string>
 
-    <!-- Layar Pantry -->
+    <!-- Layar Pantry & Redesain -->
     <string name="pantry_screen_title">Daftar Bahan Makanan</string>
     <string name="delete_item_dialog_title">Hapus bahan?</string>
     <string name="delete_item_dialog_desc">Bahan \"%1$s\" akan dihapus dari daftar pantry kamu.</string>
@@ -136,6 +136,42 @@
     <string name="item_deleted_msg">Bahan berhasil dihapus</string>
     <string name="loc_fridge">Kulkas</string>
     <string name="loc_freezer">Freezer</string>
+    <string name="loc_rak_kering">Rak Kering</string>
+    <string name="sort_expiring_soon">Kedaluwarsa terdekat</string>
+    <string name="sort_expiring_later">Kedaluwarsa terjauh</string>
+    <string name="sort_name_asc">Nama A–Z</string>
+    <string name="search_placeholder_kulkas">Cari bahan di kulkas...</string>
+    <string name="search_placeholder_freezer">Cari bahan di freezer...</string>
+    <string name="search_placeholder_rak_kering">Cari bahan di rak kering...</string>
+    <string name="chip_expiring_soon">Segera kedaluwarsa (%1$d)</string>
+    <string name="banner_title">%1$d bahan perlu perhatian</string>
+    <string name="banner_overdue_warning">Beberapa bahan sudah lewat tanggal kedaluwarsa!</string>
+    <string name="banner_subtitle_single">%1$s perlu segera diolah.</string>
+    <string name="banner_subtitle_multiple">%1$s perlu segera diolah.</string>
+    <string name="banner_subtitle_extra">%1$s dan %2$d bahan lainnya perlu segera diolah.</string>
+    <string name="btn_plan_cooking">Rencanakan Masak</string>
+    <string name="btn_add_to_location">+ Tambah Bahan ke %1$s</string>
+    <string name="btn_add_first_ingredient">+ Tambah Bahan Pertama</string>
+    <string name="empty_location_title">%1$s masih kosong</string>
+    <string name="empty_location_desc">Belum ada bahan makanan yang disimpan di %1$s.</string>
+    <string name="empty_search_title">Tidak ada hasil untuk \"%1$s\"</string>
+    <string name="empty_search_desc">Coba periksa ejaan atau gunakan kata kunci lain.</string>
+    <string name="btn_reset_search">Reset pencarian</string>
+    <string name="action_marked_used">\"%1$s\" ditandai terpakai</string>
+    <string name="action_undo">Urungkan</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_move_to">Pindahkan ke %1$s</string>
+    <string name="item_moved_msg">Bahan dipindahkan ke %1$s</string>
+    <string name="btn_retry">Coba lagi</string>
+    <string name="error_loading_pantry">Gagal memuat data pantry. Format penyimpanan tidak valid.</string>
+    <string name="no_attention_needed">Tidak ada bahan yang perlu diperhatikan</string>
+    <string name="category_label">Kategori</string>
+    <string name="category_placeholder">Pilih kategori bahan</string>
+    <string name="edit_item_screen_title">Edit Bahan</string>
+    <string name="edit_item_screen_desc">Perbarui rincian bahan makanan di pantry kamu.</string>
+    <string name="btn_update_item">Simpan Perubahan</string>
+    <string name="update_item_success">Perubahan berhasil disimpan!</string>
+
 
     <!-- Layar Profil & Dialog Keluar -->
     <string name="profile_screen_title">Profil Saya</string>
