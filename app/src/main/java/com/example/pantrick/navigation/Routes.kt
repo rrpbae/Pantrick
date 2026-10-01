@@ -26,6 +26,10 @@ data class EditIngredientRoute(val itemId: String)
 @Serializable
 data object RecipesRoute
 
+// 👇 INI TAMBAHAN BARUNYA 👇
+@Serializable
+data class RecipeDetailRoute(val recipeId: String)
+
 @Serializable
 data object ProfileRoute
 

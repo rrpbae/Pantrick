@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -66,7 +65,7 @@ fun PantrickBottomBar(
 ) {
     val homeLabel = stringResource(R.string.nav_home)
     val pantryLabel = stringResource(R.string.nav_pantry)
-    val addLabel = stringResource(R.string.nav_add)
+    val addLabel = ""
     val recipesLabel = stringResource(R.string.nav_recipes)
     val profileLabel = stringResource(R.string.nav_profile)
 
@@ -80,57 +79,45 @@ fun PantrickBottomBar(
         )
     }
 
-    Box(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding(),
-        contentAlignment = Alignment.BottomCenter
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                clip = false
+            ),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        color = MaterialTheme.colorScheme.surface
     ) {
-        // [Materi: Surface & Shadow] Bar dasar dengan sudut atas melengkung
-        Surface(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(68.dp)
-                .shadow(
-                    elevation = 10.dp,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                    clip = false
-                ),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            color = MaterialTheme.colorScheme.surface
+                .navigationBarsPadding()
         ) {
+            // Baris Menu Navigasi Utama
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(68.dp)
                     .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 navItems.forEach { item ->
                     if (item.route is AddRoute) {
-                        // Ruang kosong untuk tombol Add yang menonjol di tengah
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
+                        // Kolom kosong untuk menjaga jarak alokasi item tengah
+                        Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(top = 28.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { onItemClick(AddRoute()) }
+                                .height(68.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = item.label,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            // Kosong
                         }
                     } else {
                         val isSelected = currentRoute != null && currentRoute::class == item.route::class
 
-                        // [Materi: Conditional UI Styling] Tab aktif memakai pill Warm Peach
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -141,7 +128,6 @@ fun PantrickBottomBar(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isSelected) {
-                                // Pill Peach untuk tab aktif
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier
@@ -187,25 +173,32 @@ fun PantrickBottomBar(
                     }
                 }
             }
-        }
 
-        // [Materi: Floating Action Element] Tombol bulat hijau "Tambah" menonjol di atas baris navigasi
-        Box(
-            modifier = Modifier
-                .offset(y = (-24).dp)
-                .size(54.dp)
-                .shadow(elevation = 6.dp, shape = CircleShape)
-                .clip(CircleShape)
-                .background(ColorForestGreen)
-                .clickable { onItemClick(AddRoute()) },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = stringResource(R.string.btn_add_ingredient),
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(28.dp)
-            )
+            // Tombol Bulat Hijau (+) di Tengah Atas Bar Navigasi (Posisi Presisi)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(68.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(52.dp)
+                        .shadow(elevation = 6.dp, shape = CircleShape)
+                        .clip(CircleShape)
+                        .background(ColorForestGreen)
+                        .clickable { onItemClick(AddRoute()) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.btn_add_ingredient),
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
         }
     }
 }
