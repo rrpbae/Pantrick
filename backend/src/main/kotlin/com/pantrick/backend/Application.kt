@@ -10,9 +10,11 @@ import com.pantrick.backend.repository.UserRepository
 import com.pantrick.backend.routes.authRoutes
 import com.pantrick.backend.routes.homeRoutes
 import com.pantrick.backend.routes.recipeRoutes
+import com.pantrick.backend.routes.recommendationRoutes
 import com.pantrick.backend.service.HomeService
 import com.pantrick.backend.service.RecipeDatasetLoader
 import com.pantrick.backend.service.RecipeService
+import com.pantrick.backend.service.RecommendationService
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -51,6 +53,7 @@ fun Application.module(
     val recipeService = RecipeService(actualRecipeRepo)
     val pantryService = PantryService(pantryRepository)
     val homeService = HomeService(userRepository, pantryRepository, actualRecipeRepo)
+    val recommendationService = RecommendationService(actualRecipeRepo, pantryRepository)
 
     install(ContentNegotiation) {
         json(Json {
@@ -75,6 +78,9 @@ fun Application.module(
 
     routing {
         authRoutes(userRepository)
+        // Recommendation routes HARUS didaftarkan SEBELUM recipeRoutes
+        // agar /api/recipes/recommendations tidak di-capture oleh /{id}
+        recommendationRoutes(recommendationService)
         recipeRoutes(recipeService)
         homeRoutes(homeService)
         pantryRoutes(pantryService)
