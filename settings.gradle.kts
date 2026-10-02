@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Pantrick"
 include(":app")
+include(":backend")
  
