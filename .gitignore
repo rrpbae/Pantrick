@@ -14,3 +14,6 @@
 .cxx
 local.properties
 .vscode/
+/backend/build/
+/.kotlin/
+/.idea/
