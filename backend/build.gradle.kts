@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.ktor.server.status.pages)
     implementation(libs.logback.classic)
     implementation(libs.jbcrypt)
+    implementation(libs.commons.csv)
 
     testImplementation(libs.ktor.server.test.host)
     testImplementation("io.ktor:ktor-client-content-negotiation-jvm:3.0.3")
