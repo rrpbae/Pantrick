@@ -1,25 +1,73 @@
-# Dokumentasi API Login Pantrick (Backend Ktor)
+# Dokumentasi API Autentikasi Pantrick (Backend Ktor)
 
-Dokumentasi ini menjelaskan penggunaan endpoint autentikasi **Login** untuk aplikasi **Pantrick**.
-
----
-
-## **Endpoint**
-
-### **POST /api/login**
-
-Mengautentikasi pengguna berdasarkan email dan password yang terdaftar, serta mengembalikan token JWT untuk akses API berikutnya.
+Dokumentasi ini menjelaskan penggunaan endpoint autentikasi **Login** dan **Register** untuk aplikasi **Pantrick**.
 
 ---
 
-## **Request**
+## **1. POST /api/register**
 
-- **URL:** `/api/login`
+Membuat akun pengguna baru di Pantrick.
+
+### **Request**
 - **Method:** `POST`
-- **Headers:**
-  - `Content-Type: application/json`
+- **URL:** `/api/register`
+- **Headers:** `Content-Type: application/json`
 
-### **Body Format (JSON):**
+```json
+{
+  "name": "Budi",
+  "email": "budi@example.com",
+  "password": "password123",
+  "passwordConfirmation": "password123"
+}
+```
+
+### **Parameter Validation:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | String | Ya | Nama lengkap pengguna. |
+| `email` | String | Ya | Alamat email unik (Format email valid). |
+| `password` | String | Ya | Password akun. |
+| `passwordConfirmation` / `password_confirmation` | String | Ya | Harus sama persis dengan `password`. |
+
+### **Response**
+
+#### **HTTP 201 Created (Registrasi Berhasil)**
+```json
+{
+  "success": true,
+  "message": "Registrasi berhasil",
+  "data": {
+    "user": {
+      "id": 3,
+      "name": "Budi",
+      "email": "budi@example.com"
+    }
+  }
+}
+```
+
+#### **HTTP 400 Bad Request (Validasi Gagal / Email Terdaftar)**
+```json
+{
+  "success": false,
+  "message": "Validasi gagal",
+  "errors": {
+    "email": "Email sudah terdaftar"
+  }
+}
+```
+
+---
+
+## **2. POST /api/login**
+
+Mengautentikasi pengguna berdasarkan email dan password yang terdaftar.
+
+### **Request**
+- **Method:** `POST`
+- **URL:** `/api/login`
+- **Headers:** `Content-Type: application/json`
 
 ```json
 {
@@ -28,21 +76,9 @@ Mengautentikasi pengguna berdasarkan email dan password yang terdaftar, serta me
 }
 ```
 
-### **Parameter Validation:**
+### **Response**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `email` | String | Ya | Alamat email terdaftar pengguna (Format valid). |
-| `password` | String | Ya | Password pengguna. |
-
----
-
-## **Response**
-
-### **1. HTTP 200 OK (Login Berhasil)**
-
-Dikembalikan jika email dan password cocok dengan data pengguna.
-
+#### **HTTP 200 OK (Login Berhasil)**
 ```json
 {
   "success": true,
@@ -58,43 +94,7 @@ Dikembalikan jika email dan password cocok dengan data pengguna.
 }
 ```
 
-> **Catatan Keamanan:** Data password / hash password **tidak pernah** dikembalikan di dalam response.
-
----
-
-### **2. HTTP 400 Bad Request (Validasi Gagal)**
-
-Dikembalikan jika input tidak diisi atau format email tidak valid.
-
-#### **Contoh Email / Password Kosong:**
-```json
-{
-  "success": false,
-  "message": "Validasi gagal",
-  "errors": {
-    "email": "Email wajib diisi",
-    "password": "Password wajib diisi"
-  }
-}
-```
-
-#### **Contoh Format Email Tidak Valid:**
-```json
-{
-  "success": false,
-  "message": "Validasi gagal",
-  "errors": {
-    "email": "Format email tidak valid"
-  }
-}
-```
-
----
-
-### **3. HTTP 401 Unauthorized (Kredensial Salah)**
-
-Dikembalikan jika email tidak ditemukan di database atau password salah.
-
+#### **HTTP 401 Unauthorized (Kredensial Salah)**
 ```json
 {
   "success": false,
@@ -104,20 +104,7 @@ Dikembalikan jika email tidak ditemukan di database atau password salah.
 
 ---
 
-### **4. HTTP 500 Internal Server Error (Error Server)**
-
-Dikembalikan jika terjadi kesalahan tidak terduga pada server.
-
-```json
-{
-  "success": false,
-  "message": "Terjadi kesalahan internal pada server"
-}
-```
-
----
-
-## **Default Seed Users (Untuk Testing Login Backend)**
+## **Default Seed Users**
 
 | Email | Password | Role |
 |-------|----------|------|

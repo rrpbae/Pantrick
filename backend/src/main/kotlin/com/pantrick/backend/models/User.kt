@@ -42,3 +42,28 @@ data class ErrorResponse(
     val message: String,
     val errors: Map<String, String>? = null
 )
+
+@Serializable
+data class RegisterRequest(
+    val name: String? = null,
+    val email: String? = null,
+    val password: String? = null,
+    val passwordConfirmation: String? = null,
+    val password_confirmation: String? = null
+) {
+    val effectivePasswordConfirmation: String?
+        get() = passwordConfirmation ?: password_confirmation
+}
+
+@Serializable
+data class RegisterResponseData(
+    val user: UserData
+)
+
+@Serializable
+data class RegisterResponse(
+    val success: Boolean,
+    val message: String,
+    val data: RegisterResponseData? = null
+)
+
