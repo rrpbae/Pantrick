@@ -1,6 +1,8 @@
 package com.pantrick.backend.routes
 
 import com.pantrick.backend.models.ErrorResponse
+import com.pantrick.backend.models.FilterOptionsResponse
+import com.pantrick.backend.models.InstantDinnerResponse
 import com.pantrick.backend.models.RecommendationResponse
 import com.pantrick.backend.service.RecommendationService
 import io.ktor.http.HttpStatusCode
@@ -8,38 +10,58 @@ import io.ktor.server.application.call
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
 /**
- * Endpoint recommendation — didaftarkan di bawah /api/recipes/recommendations.
- * Endpoint WAJIB menempel di dalam blok route("/api/recipes") agar sesuai
- * struktur routing yang sudah ada di RecipeRoutes.
- *
- * Karena Ktor mencocokkan rute secara urutan, endpoint spesifik (/recommendations)
- * harus didaftarkan SEBELUM /{id} di RecipeRoutes.
+ * Endpoint recommendation resep berbasis pantry & recipe dataset.
  */
 fun Route.recommendationRoutes(recommendationService: RecommendationService) {
     route("/api/recipes") {
 
-        /**
-         * GET /api/recipes/recommendations?limit=10
-         *
-         * Headers wajib: Authorization: Bearer <JWT>
-         *
-         * Response 200:
-         * {
-         *   "success": true,
-         *   "message": "...",
-         *   "total": N,
-         *   "limit": N,
-         *   "pantryItemCount": N,
-         *   "recommendations": [ { recipe, matchedIngredients, ... } ]
-         * }
-         *
-         * Response 401: jika token tidak valid / tidak ada
-         * Response 200 dengan recommendations = [] jika pantry kosong
-         */
-        get("/recommendations") {
+        // GET /api/recipes/recommended/filters
+        get("/recommended/filters") {
+            call.respond(HttpStatusCode.OK, FilterOptionsResponse())
+        }
+
+        // GET /api/recipes/recommended/smart-menu
+        get("/recommended/smart-menu") {
+            val userId = call.getAuthenticatedUserId() ?: return@get call.respond(
+                HttpStatusCode.Unauthorized,
+                ErrorResponse(success = false, message = "Token autentikasi tidak valid atau belum disediakan")
+            )
+
+            val smartMenu = recommendationService.getSmartMenu(userId)
+            call.respond(HttpStatusCode.OK, smartMenu)
+        }
+
+        // POST /api/recipes/recommended/instant-dinner
+        post("/recommended/instant-dinner") {
+            val userId = call.getAuthenticatedUserId() ?: return@post call.respond(
+                HttpStatusCode.Unauthorized,
+                ErrorResponse(success = false, message = "Token autentikasi tidak valid atau belum disediakan")
+            )
+
+            val dinnerRecipeRec = recommendationService.getInstantDinner(userId)
+            if (dinnerRecipeRec == null) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    ErrorResponse(success = false, message = "Tidak ditemukan resep yang cocok untuk Instant Dinner")
+                )
+            } else {
+                call.respond(
+                    HttpStatusCode.OK,
+                    InstantDinnerResponse(
+                        success = true,
+                        message = "Berhasil mendapatkan rekomendasi Instant Dinner",
+                        data = dinnerRecipeRec
+                    )
+                )
+            }
+        }
+
+        // GET /api/recipes/recommendations & GET /api/recipes/recommended
+        val handleRecommendationCall: suspend (io.ktor.server.application.ApplicationCall) -> Unit = { call ->
             val userId = call.getAuthenticatedUserId()
             if (userId == null) {
                 call.respond(
@@ -49,33 +71,46 @@ fun Route.recommendationRoutes(recommendationService: RecommendationService) {
                         message = "Token autentikasi tidak valid atau belum disediakan"
                     )
                 )
-                return@get
-            }
+            } else {
+                val search = call.request.queryParameters["search"]
+                val filter = call.request.queryParameters["filter"] ?: "all"
+                val sort = call.request.queryParameters["sort"] ?: "match"
+                val maxTime = call.request.queryParameters["maxTime"]?.toIntOrNull()
+                val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
+                val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
 
-            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
-
-            val (recommendations, pantryItemCount) = recommendationService.getRecommendations(
-                userId = userId,
-                limit = limit
-            )
-
-            val message = when {
-                pantryItemCount == 0 -> "Pantry Anda kosong. Tambahkan bahan untuk mendapatkan rekomendasi resep."
-                recommendations.isEmpty() -> "Tidak ditemukan resep yang cocok dengan bahan di Pantry Anda."
-                else -> "Berhasil mendapatkan ${recommendations.size} rekomendasi resep berdasarkan ${pantryItemCount} bahan di Pantry Anda."
-            }
-
-            call.respond(
-                HttpStatusCode.OK,
-                RecommendationResponse(
-                    success = true,
-                    message = message,
-                    total = recommendations.size,
+                val (recommendations, pantryItemCount) = recommendationService.getRecommendations(
+                    userId = userId,
+                    search = search,
+                    filter = filter,
+                    sort = sort,
+                    maxTime = maxTime,
                     limit = limit,
-                    pantryItemCount = pantryItemCount,
-                    recommendations = recommendations
+                    offset = offset
                 )
-            )
+
+                val message = when {
+                    pantryItemCount == 0 && search.isNullOrBlank() -> "Pantry Anda kosong. Tambahkan bahan untuk mendapatkan rekomendasi resep."
+                    recommendations.isEmpty() -> "Tidak ditemukan resep yang cocok dengan kriteria pencarian di Pantry Anda."
+                    else -> "Berhasil mendapatkan ${recommendations.size} rekomendasi resep berdasarkan Pantry Anda."
+                }
+
+                call.respond(
+                    HttpStatusCode.OK,
+                    RecommendationResponse(
+                        success = true,
+                        message = message,
+                        total = recommendations.size,
+                        limit = limit,
+                        offset = offset,
+                        pantryItemCount = pantryItemCount,
+                        recommendations = recommendations
+                    )
+                )
+            }
         }
+
+        get("/recommendations") { handleRecommendationCall(call) }
+        get("/recommended") { handleRecommendationCall(call) }
     }
 }
