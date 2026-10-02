@@ -1,3 +1,204 @@
 <resources>
+    <!-- [Materi: Resource String] Nama dan Identitas Aplikasi Pantrick -->
     <string name="app_name">Pantrick</string>
+    <string name="tagline">Masak lebih cerdas, kurangi sampah makanan.</string>
+
+    <!-- Autentikasi: Masuk (Login) -->
+    <string name="login_title">Selamat datang kembali!</string>
+    <string name="login_subtitle">Masuk untuk melanjutkan mengelola pantry-mu</string>
+    <string name="email_label">Alamat email</string>
+    <string name="email_placeholder">nama@contoh.com</string>
+    <string name="password_label">Kata sandi</string>
+    <string name="password_placeholder">Masukkan kata sandi kamu</string>
+    <string name="remember_me">Ingat saya</string>
+    <string name="forgot_password">Lupa kata sandi?</string>
+    <string name="login_button">Masuk</string>
+    <string name="dont_have_account">Belum punya akun?&#160;</string>
+    <string name="action_sign_up">Daftar</string>
+
+    <!-- Autentikasi: Daftar (Sign Up) -->
+    <string name="signup_title">Buat akun kamu</string>
+    <string name="signup_subtitle">Mulai kelola pantry-mu lebih cerdas</string>
+    <string name="name_label">Nama lengkap</string>
+    <string name="name_placeholder">Masukkan nama lengkap kamu</string>
+    <string name="repeat_password_label">Ulangi kata sandi</string>
+    <string name="repeat_password_placeholder">Ulangi kata sandi kamu</string>
+    <string name="terms_prefix">Saya menyetujui&#160;</string>
+    <string name="terms_service">Ketentuan Layanan</string>
+    <string name="terms_and">&#160;dan&#160;</string>
+    <string name="terms_privacy">Kebijakan Privasi</string>
+    <string name="signup_button">Buat akun</string>
+    <string name="already_have_account">Sudah punya akun?&#160;</string>
+    <string name="action_login">Masuk</string>
+
+    <!-- Pesan Validasi & Notifikasi Auth -->
+    <string name="val_name_empty">Nama lengkap tidak boleh kosong</string>
+    <string name="val_email_empty">Alamat email tidak boleh kosong</string>
+    <string name="val_email_invalid">Format email tidak valid</string>
+    <string name="val_password_empty">Kata sandi tidak boleh kosong</string>
+    <string name="val_password_short">Kata sandi minimal 6 karakter</string>
+    <string name="val_repeat_password_empty">Ulangi kata sandi tidak boleh kosong</string>
+    <string name="val_password_mismatch">Kata sandi tidak sama</string>
+    <string name="auth_err_email_registered">Email sudah terdaftar. Silakan masuk.</string>
+    <string name="auth_err_not_registered">Akun belum terdaftar. Silakan daftar terlebih dahulu.</string>
+    <string name="auth_err_wrong_password">Kata sandi salah.</string>
+    <string name="auth_success_login">Masuk berhasil! Selamat datang kembali.</string>
+    <string name="auth_success_register">Akun berhasil didaftarkan! Selamat datang di Pantrick.</string>
+    <string name="feature_coming_soon">Fitur ini sedang dalam pengembangan.</string>
+
+    <!-- Bottom Navigation Bar -->
+    <string name="nav_home">Beranda</string>
+    <string name="nav_pantry">Pantry</string>
+    <string name="nav_add">Tambah</string>
+    <string name="nav_recipes">Resep</string>
+    <string name="nav_profile">Profil</string>
+
+    <!-- Header & Kartu Sapaan Home -->
+    <string name="greeting_chip">TEMAN DAPURMU</string>
+    <string name="greeting_morning">Selamat pagi, %1$s!</string>
+    <string name="greeting_noon">Selamat siang, %1$s!</string>
+    <string name="greeting_afternoon">Selamat sore, %1$s!</string>
+    <string name="greeting_evening">Selamat malam, %1$s!</string>
+    <string name="greeting_subtext_empty">Yuk, cek bahan makananmu dan siapkan menu hari ini.</string>
+    <string name="greeting_subtext_safe">Semua bahanmu masih aman. Selamat memasak!</string>
+    <string name="greeting_subtext_urgent_prefix">Kamu punya </string>
+    <string name="greeting_subtext_urgent_suffix"> yang perlu diperhatikan.</string>
+    <string name="greeting_items_count">%1$d bahan</string>
+
+    <!-- Kartu Ringkasan Home -->
+    <string name="summary_total_badge">TERKINI</string>
+    <string name="summary_total_title">Total Bahan</string>
+    <string name="summary_total_sub">Kulkas &amp; Freezer</string>
+    <string name="summary_unit_ingredient">bahan</string>
+    <string name="summary_urgent_badge">SEGERA</string>
+    <string name="summary_urgent_title">Hampir Kedaluwarsa</string>
+    <string name="summary_urgent_sub">Dalam 48 jam</string>
+
+    <!-- Filter Lokasi Bahan -->
+    <string name="filter_all">Semua (%1$d)</string>
+    <string name="filter_fridge">Kulkas (%1$d)</string>
+    <string name="filter_freezer">Freezer (%1$d)</string>
+
+    <!-- Section Perlu Diperhatikan -->
+    <string name="attention_title">Perlu Diperhatikan</string>
+    <string name="attention_view_all">Lihat Semua ›</string>
+    <string name="attention_all_safe">Semua bahanmu masih aman. Tidak ada yang hampir kedaluwarsa.</string>
+    <string name="attention_category_empty">Tidak ada bahan yang perlu diperhatikan di kategori ini.</string>
+    <string name="badge_expired">Kedaluwarsa</string>
+    <string name="badge_today">Hari ini</string>
+    <string name="badge_one_day">1 hari lagi</string>
+    <string name="badge_days_format">%1$d hari lagi</string>
+    <string name="detail_expires_tomorrow">Kedaluwarsa besok • %1$s</string>
+    <string name="detail_expires_in_days">Dalam %1$d hari • %1$s</string>
+    <string name="btn_find_recipe">Cari Resep</string>
+
+    <!-- Empty State -->
+    <string name="empty_pantry_title">Pantry-mu masih kosong</string>
+    <string name="empty_pantry_desc">Tambahkan bahan makanan yang kamu punya untuk mulai mengatur stok dan mendapatkan rekomendasi resep yang sesuai.</string>
+    <string name="btn_add_ingredient">+ Tambah Bahan</string>
+    <string name="empty_help_title">Belum tahu harus mulai dari mana?</string>
+    <string name="empty_help_desc">Kamu bisa mulai dengan menambahkan bahan pertama kamu di sini.</string>
+
+    <!-- Section Rekomendasi Resep -->
+    <string name="recipe_section_title">Pasangan Resep Pintar</string>
+    <string name="recipe_section_sub">Resep yang cocok dari bahan yang kamu punya</string>
+    <string name="recipe_match_badge">Cocok %1$d%%</string>
+    <string name="recipe_uses_badge">Cocok dengan bahanmu</string>
+    <string name="recipe_minutes">%1$d menit</string>
+    <string name="recipe_servings">%1$d porsi</string>
+    <string name="recipe_ready_summary">%1$d dari %2$d bahan siap</string>
+    <string name="recipe_missing_summary">Kurang: %1$s</string>
+    <string name="btn_cook_now">Masak Sekarang</string>
+    <string name="btn_plan_meal">Rencanakan Menu</string>
+
+    <!-- Layar Tambah Bahan -->
+    <string name="add_item_screen_title">Tambah Bahan</string>
+    <string name="add_item_screen_desc">Catat bahan baru ke dalam pantry agar stok tetap terpantau.</string>
+    <string name="item_name_label">Nama Bahan</string>
+    <string name="item_name_placeholder">Contoh: Susu Segar, Bawang Putih</string>
+    <string name="storage_location_label">Lokasi Penyimpanan</string>
+    <string name="quantity_label">Jumlah / Satuan</string>
+    <string name="quantity_placeholder">Contoh: 500 ml, 6 butir, 250 gr</string>
+    <string name="expiry_date_label">Tanggal Kedaluwarsa</string>
+    <string name="expiry_date_placeholder">Pilih tanggal</string>
+    <string name="btn_save_item">Simpan Bahan</string>
+    <string name="add_item_success">Bahan berhasil ditambahkan!</string>
+    <string name="discard_dialog_title">Buang perubahan?</string>
+    <string name="discard_dialog_desc">Data yang sudah kamu ketik akan hilang jika kamu keluar sekarang.</string>
+    <string name="action_discard">Buang</string>
+    <string name="action_cancel">Batal</string>
+
+    <!-- Layar Pantry & Redesain -->
+    <string name="pantry_screen_title">Daftar Bahan Makanan</string>
+    <string name="delete_item_dialog_title">Hapus bahan?</string>
+    <string name="delete_item_dialog_desc">Bahan \"%1$s\" akan dihapus dari daftar pantry kamu.</string>
+    <string name="action_delete">Hapus</string>
+    <string name="item_deleted_msg">Bahan berhasil dihapus</string>
+    <string name="loc_fridge">Kulkas</string>
+    <string name="loc_freezer">Freezer</string>
+    <string name="loc_rak_kering">Rak Kering</string>
+    <string name="sort_expiring_soon">Kedaluwarsa terdekat</string>
+    <string name="sort_expiring_later">Kedaluwarsa terjauh</string>
+    <string name="sort_name_asc">Nama A–Z</string>
+    <string name="search_placeholder_kulkas">Cari bahan di kulkas...</string>
+    <string name="search_placeholder_freezer">Cari bahan di freezer...</string>
+    <string name="search_placeholder_rak_kering">Cari bahan di rak kering...</string>
+    <string name="chip_expiring_soon">Segera kedaluwarsa (%1$d)</string>
+    <string name="banner_title">%1$d bahan perlu perhatian</string>
+    <string name="banner_overdue_warning">Beberapa bahan sudah lewat tanggal kedaluwarsa!</string>
+    <string name="banner_subtitle_single">%1$s perlu segera diolah.</string>
+    <string name="banner_subtitle_multiple">%1$s perlu segera diolah.</string>
+    <string name="banner_subtitle_extra">%1$s dan %2$d bahan lainnya perlu segera diolah.</string>
+    <string name="btn_plan_cooking">Rencanakan Masak</string>
+    <string name="btn_add_to_location">+ Tambah Bahan ke %1$s</string>
+    <string name="btn_add_first_ingredient">+ Tambah Bahan Pertama</string>
+    <string name="empty_location_title">%1$s masih kosong</string>
+    <string name="empty_location_desc">Belum ada bahan makanan yang disimpan di %1$s.</string>
+    <string name="empty_search_title">Tidak ada hasil untuk \"%1$s\"</string>
+    <string name="empty_search_desc">Coba periksa ejaan atau gunakan kata kunci lain.</string>
+    <string name="btn_reset_search">Reset pencarian</string>
+    <string name="action_marked_used">\"%1$s\" ditandai terpakai</string>
+    <string name="action_undo">Urungkan</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_move_to">Pindahkan ke %1$s</string>
+    <string name="item_moved_msg">Bahan dipindahkan ke %1$s</string>
+    <string name="btn_retry">Coba lagi</string>
+    <string name="error_loading_pantry">Gagal memuat data pantry. Format penyimpanan tidak valid.</string>
+    <string name="no_attention_needed">Tidak ada bahan yang perlu diperhatikan</string>
+    <string name="category_label">Kategori</string>
+    <string name="category_placeholder">Pilih kategori bahan</string>
+    <string name="edit_item_screen_title">Edit Bahan</string>
+    <string name="edit_item_screen_desc">Perbarui rincian bahan makanan di pantry kamu.</string>
+    <string name="btn_update_item">Simpan Perubahan</string>
+    <string name="update_item_success">Perubahan berhasil disimpan!</string>
+
+
+    <!-- Layar Profil & Dialog Keluar -->
+    <string name="profile_screen_title">Profil Saya</string>
+    <string name="profile_stats_title">Statistik Pantry</string>
+    <string name="profile_stored_items">Total bahan tersimpan</string>
+    <string name="btn_logout">Keluar</string>
+    <string name="logout_dialog_title">Keluar dari Pantrick?</string>
+    <string name="logout_dialog_desc">Kamu akan keluar dari akun aktif ini.</string>
+    <string name="action_logout">Keluar</string>
+    <string name="exit_app_dialog_title">Keluar dari Pantrick?</string>
+    <string name="exit_app_dialog_desc">Apakah kamu yakin ingin menutup aplikasi?</string>
+    <string name="action_exit">Keluar</string>
+
+    <!-- Layar Resep -->
+    <string name="recipes_screen_title">Koleksi Resep</string>
+    <string name="recipes_screen_desc">Jelajahi ide masakan lezat yang disesuaikan dengan isi kulkas dan freezer kamu.</string>
+
+    <!-- Aksesibilitas Content Description -->
+    <string name="cd_logo">Logo Pantrick</string>
+    <string name="cd_notifications">Notifikasi</string>
+    <string name="cd_avatar">Avatar Pengguna</string>
+    <string name="cd_pantry_icon">Ikon Pantry</string>
+    <string name="cd_timer_icon">Ikon Timer</string>
+    <string name="cd_calendar_icon">Ikon Kalender</string>
+    <string name="cd_favorite">Favorit</string>
+    <string name="cd_password_visibility">Alihkan keterlihatan kata sandi</string>
+    <string name="cd_back_button">Kembali</string>
+    <string name="cd_delete_item">Hapus item</string>
+    <string name="cd_select_date">Pilih tanggal kedaluwarsa</string>
 </resources>

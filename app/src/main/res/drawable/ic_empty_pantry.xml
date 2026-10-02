@@ -1,0 +1,43 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="160dp"
+    android:viewportWidth="200"
+    android:viewportHeight="160">
+    <!-- Soft circular ambient background -->
+    <path
+        android:fillColor="#F6EFE9"
+        android:pathData="M100,80m-68,0a68,68 0 1,0 136,0a68,68 0 1,0 -136,0" />
+
+    <!-- Fridge Body -->
+    <path
+        android:fillColor="#E2DDD5"
+        android:pathData="M65,25 L135,25 A12,12 0 0,1 147,37 L147,135 A8,8 0 0,1 139,143 L61,143 A8,8 0 0,1 53,135 L53,37 A12,12 0 0,1 65,25 Z" />
+
+    <!-- Upper Door Separator (Freezer Line) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M53,65 L147,65" />
+
+    <!-- Handles -->
+    <path
+        android:strokeColor="#4A2C21"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M62,42 L62,54" />
+    <path
+        android:strokeColor="#4A2C21"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M62,75 L62,105" />
+
+    <!-- Gentle Sparkle / Star top right -->
+    <path
+        android:fillColor="#2D5A3A"
+        android:pathData="M152,38 L154,44 L160,46 L154,48 L152,54 L150,48 L144,46 L150,44 Z" />
+
+    <!-- Little heart / dot accent -->
+    <path
+        android:fillColor="#E08B73"
+        android:pathData="M44,72 A5,5 0 1,0 54,72 A5,5 0 1,0 44,72 Z" />
+</vector>

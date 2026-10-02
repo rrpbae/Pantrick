@@ -1,0 +1,28 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="140dp"
+    android:viewportWidth="200"
+    android:viewportHeight="140">
+    <!-- Background soft warm neutral -->
+    <path
+        android:fillColor="#F6F0E9"
+        android:pathData="M0,0h200v140h-200z" />
+    <!-- Dish / Basket base -->
+    <path
+        android:fillColor="#E8DDD1"
+        android:pathData="M40,90 Q100,115 160,90 L150,112 Q100,128 50,112 Z" />
+    <!-- Ingredient shapes (clove, produce silhouettes) -->
+    <path
+        android:fillColor="#88B87B"
+        android:fillAlpha="0.75"
+        android:pathData="M90,45 C75,55 70,80 95,85 C115,85 125,65 110,48 C102,40 96,40 90,45 Z" />
+    <!-- Leaf garnish -->
+    <path
+        android:fillColor="#2D5A3A"
+        android:pathData="M92,42 C85,30 98,22 105,25 C108,35 98,40 92,42 Z" />
+    <!-- Accent warm dot -->
+    <path
+        android:fillColor="#D98A6C"
+        android:fillAlpha="0.8"
+        android:pathData="M125,65 A14,14 0 1,0 153,65 A14,14 0 1,0 125,65 Z" />
+</vector>
