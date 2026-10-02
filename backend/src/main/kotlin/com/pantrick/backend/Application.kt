@@ -1,18 +1,28 @@
 package com.pantrick.backend
 
 import com.pantrick.backend.models.ErrorResponse
+import com.pantrick.backend.repository.InMemoryCookingHistoryRepository
 import com.pantrick.backend.repository.InMemoryPantryRepository
 import com.pantrick.backend.repository.InMemoryRecipeRepository
+import com.pantrick.backend.repository.InMemorySavedRecipeRepository
+import com.pantrick.backend.repository.InMemoryShoppingListRepository
 import com.pantrick.backend.repository.InMemoryUserRepository
 import com.pantrick.backend.repository.PantryRepository
 import com.pantrick.backend.repository.RecipeRepository
+import com.pantrick.backend.repository.SavedRecipeRepository
 import com.pantrick.backend.repository.UserRepository
 import com.pantrick.backend.routes.authRoutes
 import com.pantrick.backend.routes.homeRoutes
+import com.pantrick.backend.routes.pantryRoutes
 import com.pantrick.backend.routes.recipeRoutes
+import com.pantrick.backend.routes.recommendationRoutes
+import com.pantrick.backend.routes.savedRecipeRoutes
 import com.pantrick.backend.service.HomeService
+import com.pantrick.backend.service.PantryService
 import com.pantrick.backend.service.RecipeDatasetLoader
 import com.pantrick.backend.service.RecipeService
+import com.pantrick.backend.service.RecommendationService
+import com.pantrick.backend.service.SavedRecipeService
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -26,9 +36,6 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
-import com.pantrick.backend.routes.pantryRoutes
-import com.pantrick.backend.service.PantryService
-
 private val appLogger = LoggerFactory.getLogger("com.pantrick.backend.Application")
 
 fun main() {
@@ -40,7 +47,8 @@ fun main() {
 fun Application.module(
     userRepository: UserRepository = InMemoryUserRepository(),
     recipeRepository: RecipeRepository? = null,
-    pantryRepository: PantryRepository = InMemoryPantryRepository()
+    pantryRepository: PantryRepository = InMemoryPantryRepository(),
+    savedRecipeRepository: SavedRecipeRepository = InMemorySavedRecipeRepository()
 ) {
     val actualRecipeRepo = recipeRepository ?: run {
         appLogger.info("Initializing Recipe Repository from dataset...")
@@ -48,9 +56,20 @@ fun Application.module(
         InMemoryRecipeRepository(datasetResult.recipes)
     }
 
+    val cookingHistoryRepo = InMemoryCookingHistoryRepository()
+    val shoppingListRepo = InMemoryShoppingListRepository()
+
     val recipeService = RecipeService(actualRecipeRepo)
     val pantryService = PantryService(pantryRepository)
     val homeService = HomeService(userRepository, pantryRepository, actualRecipeRepo)
+    val recommendationService = RecommendationService(actualRecipeRepo, pantryRepository, savedRecipeRepository)
+    val savedRecipeService = SavedRecipeService(
+        savedRecipeRepository = savedRecipeRepository,
+        recipeRepository = actualRecipeRepo,
+        cookingHistoryRepository = cookingHistoryRepo,
+        shoppingListRepository = shoppingListRepo,
+        pantryRepository = pantryRepository
+    )
 
     install(ContentNegotiation) {
         json(Json {
@@ -75,6 +94,10 @@ fun Application.module(
 
     routing {
         authRoutes(userRepository)
+        // Recommendation & Saved Recipe routes HARUS didaftarkan SEBELUM recipeRoutes
+        // agar rute spesifik tidak tertangkap oleh /{id}
+        recommendationRoutes(recommendationService)
+        savedRecipeRoutes(savedRecipeService)
         recipeRoutes(recipeService)
         homeRoutes(homeService)
         pantryRoutes(pantryService)
