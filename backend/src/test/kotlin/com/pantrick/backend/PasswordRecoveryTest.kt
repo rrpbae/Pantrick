@@ -134,7 +134,7 @@ class PasswordRecoveryTest {
     @Test
     fun testVerifyTokenValid() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -227,7 +227,7 @@ class PasswordRecoveryTest {
     @Test
     fun testResetPasswordConfirmationMismatch() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -258,7 +258,7 @@ class PasswordRecoveryTest {
     @Test
     fun testResetPasswordSuccess() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -288,7 +288,7 @@ class PasswordRecoveryTest {
     @Test
     fun testLoginWithNewPasswordAfterReset() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -324,7 +324,7 @@ class PasswordRecoveryTest {
     @Test
     fun testLoginWithOldPasswordFailsAfterReset() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -359,7 +359,7 @@ class PasswordRecoveryTest {
     @Test
     fun testPasswordNotInResponse() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -393,7 +393,7 @@ class PasswordRecoveryTest {
     @Test
     fun testPasswordHashNotInResponse() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -428,7 +428,7 @@ class PasswordRecoveryTest {
     @Test
     fun testTokenCannotBeUsedTwice() = testApplication {
         val (userRepo, tokenRepo, service) = buildTestComponents()
-        application { module(userRepo, service) }
+        application { module(userRepository = userRepo, passwordResetService = service) }
         val client = createClient {
             install(ClientContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
