@@ -20,13 +20,16 @@ data object PantryRoute
 @Serializable
 data class AddRoute(val initialLocation: String = "KULKAS")
 
+// 👇 TAMBAHKAN INI UNTUK RUTE FORM TAMBAH BAHAN DI PANTRY 👇
+@Serializable
+data class AddPantryItemRoute(val initialLocation: String = "KULKAS")
+
 @Serializable
 data class EditIngredientRoute(val itemId: String)
 
 @Serializable
 data object RecipesRoute
 
-// 👇 INI TAMBAHAN BARUNYA 👇
 @Serializable
 data class RecipeDetailRoute(val recipeId: String)
 

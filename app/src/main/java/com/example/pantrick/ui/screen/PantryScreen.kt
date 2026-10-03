@@ -3,7 +3,6 @@
 package com.example.pantrick.ui.screen
 
 import android.content.res.Configuration
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,15 +15,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -55,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.example.pantrick.R
 import com.example.pantrick.core.ui.theme.ColorDarkChocolate
 import com.example.pantrick.core.ui.theme.ColorForestGreen
+import com.example.pantrick.core.ui.theme.ColorSurfaceWhite
 import com.example.pantrick.core.ui.theme.PantrickTheme
 import com.example.pantrick.data.model.FoodCategory
 import com.example.pantrick.data.model.PantryItem
@@ -70,7 +77,6 @@ import com.example.pantrick.ui.component.PantrySearchBar
 import com.example.pantrick.ui.component.PantryTopHeader
 import com.example.pantrick.ui.viewmodel.PantryUiState
 import com.example.pantrick.ui.viewmodel.PantryViewModel
-import com.example.pantrick.util.BannerInfo
 import com.example.pantrick.util.ChipFilter
 import com.example.pantrick.util.PantrickConstants
 import com.example.pantrick.util.PantryFilter
@@ -80,7 +86,6 @@ import java.time.LocalDate
 
 private const val TAG = "PantryScreen"
 
-// [Materi: Custom Saver] Menyimpan ChipFilter melintasi perubahan konfigurasi perangkat
 private val ChipFilterSaver = Saver<ChipFilter, String>(
     save = { chip ->
         when (chip) {
@@ -103,7 +108,6 @@ private val ChipFilterSaver = Saver<ChipFilter, String>(
     }
 )
 
-// [Materi: Stateful Composable] Mengelola state pantry, snackbar, dialog konfirmasi, dan navigasi
 @Composable
 fun PantryScreen(
     currentUser: User?,
@@ -119,20 +123,17 @@ fun PantryScreen(
     val uiState by pantryViewModel.uiState.collectAsState()
     val todayEpochDay = remember { LocalDate.now().toEpochDay() }
 
-    // [Materi: rememberSaveable per-field] Menyimpan tab lokasi, teks pencarian, filter, dan sort
     var selectedLocation by rememberSaveable { mutableStateOf(StorageLocation.KULKAS) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var chipFilter by rememberSaveable(stateSaver = ChipFilterSaver) { mutableStateOf(ChipFilter.None) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.EXPIRING_SOON) }
 
-    // Dialog state
     var itemToDelete by remember { mutableStateOf<PantryItem?>(null) }
     var itemToMove by remember { mutableStateOf<PantryItem?>(null) }
 
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // [Materi: Dynamic Chip Resolution] Reset chip ke None jika item pada tab aktif sudah tidak ada
     LaunchedEffect(items, selectedLocation) {
         val resolved = PantryFilter.resolveChip(items, selectedLocation, chipFilter, todayEpochDay)
         if (resolved != chipFilter) {
@@ -140,14 +141,12 @@ fun PantryScreen(
         }
     }
 
-    // [Materi: BackHandler Berjenjang] Jika ada pencarian/filter aktif, bersihkan terlebih dahulu
     val isFilterOrSearchActive = searchQuery.isNotBlank() || chipFilter !is ChipFilter.None
     BackHandler(enabled = isFilterOrSearchActive) {
         searchQuery = ""
         chipFilter = ChipFilter.None
     }
 
-    // [Materi: AlertDialog Konfirmasi Hapus Bahan]
     itemToDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
@@ -201,7 +200,6 @@ fun PantryScreen(
         )
     }
 
-    // [Materi: AlertDialog Pindahkan Lokasi Bahan]
     itemToMove?.let { item ->
         var targetLocation by remember { mutableStateOf(item.location) }
         AlertDialog(
@@ -258,7 +256,6 @@ fun PantryScreen(
         )
     }
 
-    // [Materi: Aksi Lonceng Notifikasi]
     val onBellClick: () -> Unit = {
         val urgentOverall = PantryFilter.expiringItems(items, todayEpochDay)
         if (urgentOverall.isNotEmpty()) {
@@ -276,7 +273,6 @@ fun PantryScreen(
         }
     }
 
-    // [Materi: Aksi Centang Bahan (Tandai Terpakai)]
     val onMarkUsed: (PantryItem) -> Unit = { item ->
         val email = currentUser?.email
         pantryViewModel.deleteItem(email, item.id)
@@ -295,27 +291,6 @@ fun PantryScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            // [Materi: Sticky Bottom Action Button] Tombol tambah dinamis sesuai lokasi tab aktif
-            Button(
-                onClick = { onNavigateToAdd(selectedLocation) },
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ColorForestGreen,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = PantrickConstants.HOME_HORIZONTAL_PADDING, vertical = 8.dp)
-                    .height(48.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.btn_add_to_location, selectedLocation.label),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        },
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier
     ) { innerPadding ->
@@ -346,15 +321,11 @@ fun PantryScreen(
             onPlanMealClick = onPlanMealClick,
             onRetryLoad = { pantryViewModel.retryLoad() },
             onAddNewItemClick = { onNavigateToAdd(selectedLocation) },
-            contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding() + contentPadding.calculateTopPadding(),
-                bottom = innerPadding.calculateBottomPadding() + contentPadding.calculateBottomPadding() + 8.dp
-            )
+            contentPadding = innerPadding
         )
     }
 }
 
-// [Materi: Stateless Composable] UI murni layar Pantry berbasis LazyVerticalGrid dengan header berkunci stabil
 @Composable
 fun StatelessPantryContent(
     currentUser: User?,
@@ -383,12 +354,10 @@ fun StatelessPantryContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    // Perhitungan lokasi tab
     val kulkasCount = remember(items) { PantryFilter.countByLocation(items, StorageLocation.KULKAS) }
     val freezerCount = remember(items) { PantryFilter.countByLocation(items, StorageLocation.FREEZER) }
     val rakKeringCount = remember(items) { PantryFilter.countByLocation(items, StorageLocation.RAK_KERING) }
 
-    // Perhitungan bahan mendesak keseluruhan & per lokasi aktif
     val urgentItemsOverall = remember(items, todayEpochDay) {
         PantryFilter.expiringItems(items, todayEpochDay)
     }
@@ -404,19 +373,15 @@ fun StatelessPantryContent(
         PantryFilter.availableCategories(items, selectedLocation)
     }
 
-    // Hasil filter dan pencarian
     val filteredItems = remember(items, selectedLocation, searchQuery, chipFilter, sortOrder, todayEpochDay) {
         PantryFilter.apply(items, selectedLocation, searchQuery, chipFilter, sortOrder, todayEpochDay)
     }
 
-    // Banner info terstruktur
     val bannerInfo = remember(locationUrgentItems, todayEpochDay) {
         PantryFilter.buildBannerInfo(locationUrgentItems, todayEpochDay)
     }
 
-    // Penentuan kondisi kosong
     val isPantryCompletelyEmpty = items.isEmpty()
-    val isLocationTabEmpty = locationItems.isEmpty()
     val isSearchResultEmpty = filteredItems.isEmpty()
 
     LazyVerticalGrid(
@@ -424,11 +389,15 @@ fun StatelessPantryContent(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(
+            top = contentPadding.calculateTopPadding(),
+            bottom = contentPadding.calculateBottomPadding() + 32.dp,
+            start = 16.dp,
+            end = 16.dp
+        ),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // [Materi: Stable Key Header 1] Top Header (Avatar, Judul, Lonceng)
         item(key = "header_top", span = { GridItemSpan(2) }) {
             PantryTopHeader(
                 currentUser = currentUser,
@@ -438,7 +407,6 @@ fun StatelessPantryContent(
             )
         }
 
-        // [Materi: Stable Key Header 2] Tab Lokasi (Kulkas, Freezer, Rak Kering)
         item(key = "header_tabs", span = { GridItemSpan(2) }) {
             LocationTabRow(
                 selectedLocation = selectedLocation,
@@ -449,7 +417,6 @@ fun StatelessPantryContent(
             )
         }
 
-        // [Materi: Stable Key Header 3] Kolom Pencarian
         item(key = "header_search", span = { GridItemSpan(2) }) {
             PantrySearchBar(
                 query = searchQuery,
@@ -459,7 +426,50 @@ fun StatelessPantryContent(
             )
         }
 
-        // [Materi: Stable Key Header 4] Barisan Chip Filter & Pengurutan
+        // ==========================================
+        // TOMBOL TAMBAH PERMANEN DI BAWAH PENCARIAN
+        // ==========================================
+        item(key = "permanent_add_button", span = { GridItemSpan(2) }) {
+            Card(
+                onClick = onAddNewItemClick,
+                colors = CardDefaults.cardColors(containerColor = ColorForestGreen),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(2.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(ColorSurfaceWhite.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = null,
+                            tint = ColorSurfaceWhite,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Tambah Bahan ke ${selectedLocation.label}",
+                        color = ColorSurfaceWhite,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
         item(key = "header_chips", span = { GridItemSpan(2) }) {
             PantryFilterChipRow(
                 chipFilter = chipFilter,
@@ -471,7 +481,6 @@ fun StatelessPantryContent(
             )
         }
 
-        // [Materi: Stable Key Header 5] Banner Peringatan Bahan Kedaluwarsa
         if (bannerInfo.totalCount > 0 && chipFilter !is ChipFilter.Category) {
             item(key = "header_banner", span = { GridItemSpan(2) }) {
                 ExpiryAlertBanner(
@@ -481,7 +490,7 @@ fun StatelessPantryContent(
             }
         }
 
-        // [Materi: Error & Empty States Handling]
+        // Tampilkan State Error / Kosong atau Item Grid
         if (uiState is PantryUiState.Error) {
             item(key = "state_error", span = { GridItemSpan(2) }) {
                 PantryEmptyStateView(
@@ -496,13 +505,6 @@ fun StatelessPantryContent(
                     onPrimaryActionClick = onAddNewItemClick
                 )
             }
-        } else if (isLocationTabEmpty) {
-            item(key = "state_empty_tab", span = { GridItemSpan(2) }) {
-                PantryEmptyStateView(
-                    emptyType = PantryEmptyType.EmptyLocation(selectedLocation),
-                    onPrimaryActionClick = onAddNewItemClick
-                )
-            }
         } else if (isSearchResultEmpty) {
             item(key = "state_empty_search", span = { GridItemSpan(2) }) {
                 PantryEmptyStateView(
@@ -511,7 +513,7 @@ fun StatelessPantryContent(
                 )
             }
         } else {
-            // [Materi: Grid Items] Kartu bahan makanan dengan key ID stabil
+            // Jika tab lokasi berisi bahan, tampilkan kartu bahan makanannya secara grid
             items(
                 items = filteredItems,
                 key = { it.id },
@@ -527,224 +529,5 @@ fun StatelessPantryContent(
                 )
             }
         }
-
-        // Ruang tambahan di bagian bawah agar tidak tertutup tombol sticky
-        item(key = "bottom_spacer", span = { GridItemSpan(2) }) {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-// ============================== PREVIEWS (5 KONDISI LIGHT & DARK) ==============================
-
-// Sample test data
-private val sampleUser = User(fullName = "Budi Santoso", email = "budi@contoh.com", passwordHash = "")
-private val sampleItems = listOf(
-    PantryItem("1", "Susu Sapi Segar", StorageLocation.KULKAS, "1 Liter", LocalDate.now().plusDays(1).toEpochDay(), FoodCategory.SUSU_TELUR),
-    PantryItem("2", "Telur Ayam", StorageLocation.KULKAS, "10 Butir", LocalDate.now().plusDays(2).toEpochDay(), FoodCategory.SUSU_TELUR),
-    PantryItem("3", "Bayam Hijau", StorageLocation.KULKAS, "1 Ikat", LocalDate.now().plusDays(5).toEpochDay(), FoodCategory.SAYUR_BUAH),
-    PantryItem("4", "Daging Sapi", StorageLocation.FREEZER, "500 gr", LocalDate.now().plusDays(20).toEpochDay(), FoodCategory.DAGING_IKAN)
-)
-
-// 1. Kondisi Terisi + Banner (Light & Dark)
-@Preview(name = "1. Terisi + Banner - Light", showBackground = true)
-@Composable
-fun PantryPreviewFilledLight() {
-    PantrickTheme {
-        StatelessPantryContent(
-            currentUser = sampleUser,
-            uiState = PantryUiState.Success(sampleItems),
-            items = sampleItems,
-            selectedLocation = StorageLocation.KULKAS,
-            searchQuery = "",
-            chipFilter = ChipFilter.None,
-            sortOrder = SortOrder.EXPIRING_SOON,
-            todayEpochDay = LocalDate.now().toEpochDay(),
-            onLocationSelected = {},
-            onSearchQueryChange = {},
-            onClearSearchQuery = {},
-            onChipSelected = {},
-            onSortOrderSelected = {},
-            onResetFilters = {},
-            onBellClick = {},
-            onAvatarClick = {},
-            onMarkUsed = {},
-            onEditClick = {},
-            onMoveClick = {},
-            onDeleteClick = {},
-            onPlanMealClick = {},
-            onRetryLoad = {},
-            onAddNewItemClick = {},
-            contentPadding = PaddingValues(0.dp)
-        )
-    }
-}
-
-@Preview(name = "1. Terisi + Banner - Dark", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun PantryPreviewFilledDark() {
-    PantrickTheme {
-        StatelessPantryContent(
-            currentUser = sampleUser,
-            uiState = PantryUiState.Success(sampleItems),
-            items = sampleItems,
-            selectedLocation = StorageLocation.KULKAS,
-            searchQuery = "",
-            chipFilter = ChipFilter.None,
-            sortOrder = SortOrder.EXPIRING_SOON,
-            todayEpochDay = LocalDate.now().toEpochDay(),
-            onLocationSelected = {},
-            onSearchQueryChange = {},
-            onClearSearchQuery = {},
-            onChipSelected = {},
-            onSortOrderSelected = {},
-            onResetFilters = {},
-            onBellClick = {},
-            onAvatarClick = {},
-            onMarkUsed = {},
-            onEditClick = {},
-            onMoveClick = {},
-            onDeleteClick = {},
-            onPlanMealClick = {},
-            onRetryLoad = {},
-            onAddNewItemClick = {},
-            contentPadding = PaddingValues(0.dp)
-        )
-    }
-}
-
-// 2. Kondisi User Baru (Pantry Kosong Total)
-@Preview(name = "2. User Baru - Light", showBackground = true)
-@Composable
-fun PantryPreviewNewUserLight() {
-    PantrickTheme {
-        StatelessPantryContent(
-            currentUser = sampleUser,
-            uiState = PantryUiState.Success(emptyList()),
-            items = emptyList(),
-            selectedLocation = StorageLocation.KULKAS,
-            searchQuery = "",
-            chipFilter = ChipFilter.None,
-            sortOrder = SortOrder.EXPIRING_SOON,
-            todayEpochDay = LocalDate.now().toEpochDay(),
-            onLocationSelected = {},
-            onSearchQueryChange = {},
-            onClearSearchQuery = {},
-            onChipSelected = {},
-            onSortOrderSelected = {},
-            onResetFilters = {},
-            onBellClick = {},
-            onAvatarClick = {},
-            onMarkUsed = {},
-            onEditClick = {},
-            onMoveClick = {},
-            onDeleteClick = {},
-            onPlanMealClick = {},
-            onRetryLoad = {},
-            onAddNewItemClick = {},
-            contentPadding = PaddingValues(0.dp)
-        )
-    }
-}
-
-// 3. Kondisi Tab Kosong (Rak Kering kosong)
-@Preview(name = "3. Tab Kosong - Light", showBackground = true)
-@Composable
-fun PantryPreviewEmptyTabLight() {
-    PantrickTheme {
-        StatelessPantryContent(
-            currentUser = sampleUser,
-            uiState = PantryUiState.Success(sampleItems),
-            items = sampleItems,
-            selectedLocation = StorageLocation.RAK_KERING,
-            searchQuery = "",
-            chipFilter = ChipFilter.None,
-            sortOrder = SortOrder.EXPIRING_SOON,
-            todayEpochDay = LocalDate.now().toEpochDay(),
-            onLocationSelected = {},
-            onSearchQueryChange = {},
-            onClearSearchQuery = {},
-            onChipSelected = {},
-            onSortOrderSelected = {},
-            onResetFilters = {},
-            onBellClick = {},
-            onAvatarClick = {},
-            onMarkUsed = {},
-            onEditClick = {},
-            onMoveClick = {},
-            onDeleteClick = {},
-            onPlanMealClick = {},
-            onRetryLoad = {},
-            onAddNewItemClick = {},
-            contentPadding = PaddingValues(0.dp)
-        )
-    }
-}
-
-// 4. Kondisi Hasil Pencarian Kosong
-@Preview(name = "4. Hasil Kosong - Light", showBackground = true)
-@Composable
-fun PantryPreviewEmptySearchLight() {
-    PantrickTheme {
-        StatelessPantryContent(
-            currentUser = sampleUser,
-            uiState = PantryUiState.Success(sampleItems),
-            items = sampleItems,
-            selectedLocation = StorageLocation.KULKAS,
-            searchQuery = "Cokelat Belgian",
-            chipFilter = ChipFilter.None,
-            sortOrder = SortOrder.EXPIRING_SOON,
-            todayEpochDay = LocalDate.now().toEpochDay(),
-            onLocationSelected = {},
-            onSearchQueryChange = {},
-            onClearSearchQuery = {},
-            onChipSelected = {},
-            onSortOrderSelected = {},
-            onResetFilters = {},
-            onBellClick = {},
-            onAvatarClick = {},
-            onMarkUsed = {},
-            onEditClick = {},
-            onMoveClick = {},
-            onDeleteClick = {},
-            onPlanMealClick = {},
-            onRetryLoad = {},
-            onAddNewItemClick = {},
-            contentPadding = PaddingValues(0.dp)
-        )
-    }
-}
-
-// 5. Kondisi Error (Gagal Baca JSON)
-@Preview(name = "5. Error State - Light", showBackground = true)
-@Composable
-fun PantryPreviewErrorLight() {
-    PantrickTheme {
-        StatelessPantryContent(
-            currentUser = sampleUser,
-            uiState = PantryUiState.Error("Gagal memuat data pantry. Format penyimpanan tidak valid."),
-            items = emptyList(),
-            selectedLocation = StorageLocation.KULKAS,
-            searchQuery = "",
-            chipFilter = ChipFilter.None,
-            sortOrder = SortOrder.EXPIRING_SOON,
-            todayEpochDay = LocalDate.now().toEpochDay(),
-            onLocationSelected = {},
-            onSearchQueryChange = {},
-            onClearSearchQuery = {},
-            onChipSelected = {},
-            onSortOrderSelected = {},
-            onResetFilters = {},
-            onBellClick = {},
-            onAvatarClick = {},
-            onMarkUsed = {},
-            onEditClick = {},
-            onMoveClick = {},
-            onDeleteClick = {},
-            onPlanMealClick = {},
-            onRetryLoad = {},
-            onAddNewItemClick = {},
-            contentPadding = PaddingValues(0.dp)
-        )
     }
 }

@@ -35,7 +35,7 @@ fun RecipesScreen(
             .padding(contentPadding),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
-        // 1. HEADER (Menggunakan HomeHeader agar persis seperti Beranda)
+        // 1. HEADER
         item {
             HomeHeader(
                 userName = "Alex Morgan",
@@ -68,7 +68,7 @@ fun RecipesScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // 3. FILTER CHIPS (Tanpa Tinggi Protein)
+        // 3. FILTER CHIPS
         item {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -163,7 +163,7 @@ fun RecipesScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // 6. RECIPE CARDS
+        // 6. RECIPE CARDS (Tanpa tombol simpan/bookmark di pojok kartu)
         item {
             RecipeCard(
                 title = "Creamy Garlic Herb Pasta",
@@ -229,24 +229,7 @@ fun RecipesScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 7. SAVED COLLECTIONS HEADER
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Column {
-                    Text("Koleksi Tersimpan", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ColorDarkChocolate)
-                    Text("Daftar putar resep pribadimu", fontSize = 11.sp, color = ColorTextSubtitleBrown)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.CreateNewFolder, contentDescription = null, tint = ColorForestGreen, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Folder Baru", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorForestGreen)
-                }
-            }
-        }
+        // Bagian "Koleksi Tersimpan" dan "Folder Baru" telah dihapus sesuai permintaan.
     }
 }
 
@@ -324,12 +307,7 @@ fun RecipeCard(
                     }
                 }
 
-                Box(
-                    modifier = Modifier.padding(8.dp).size(28.dp).align(Alignment.TopEnd).background(ColorSurfaceWhite, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Bookmark, contentDescription = null, tint = ColorForestGreen, modifier = Modifier.size(16.dp))
-                }
+                // Tombol Bookmark / Simpan di pojok kanan atas telah dihapus sesuai permintaan.
 
                 if (badgeText.isNotEmpty()) {
                     Surface(

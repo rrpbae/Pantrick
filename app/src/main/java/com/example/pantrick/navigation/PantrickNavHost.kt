@@ -32,6 +32,7 @@ import com.example.pantrick.R
 import com.example.pantrick.data.model.StorageLocation
 import com.example.pantrick.ui.component.PantrickBottomBar
 import com.example.pantrick.ui.screen.AddIngredientScreen
+import com.example.pantrick.ui.screen.AddPantryItemScreen
 import com.example.pantrick.ui.screen.EditIngredientScreen
 import com.example.pantrick.ui.screen.HomeScreen
 import com.example.pantrick.ui.screen.LoginScreen
@@ -45,7 +46,6 @@ import com.example.pantrick.ui.viewmodel.PantryViewModel
 
 private const val TAG = "PantrickNav"
 
-// [Materi: NavHost Composable] Single NavHost dengan ViewModel Scoped ke Activity level
 @Composable
 fun PantrickNavHost(
     navController: NavHostController = rememberNavController(),
@@ -53,16 +53,13 @@ fun PantrickNavHost(
     pantryViewModel: PantryViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
-    // [Materi: StateFlow Observation] Mengamati currentUser dan items pantry secara reaktif
     val currentUser by authViewModel.currentUser.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
 
-    // [Materi: Dynamic Data Synchronization] Memuat bahan setiap kali user aktif berganti
     LaunchedEffect(currentUser) {
         pantryViewModel.loadItemsForUser(currentUser?.email)
     }
 
-    // [Materi: Initial Route Determination]
     val initialDestination = remember {
         if (authViewModel.hasActiveSession()) HomeRoute else LoginRoute
     }
@@ -163,7 +160,7 @@ fun PantrickNavHost(
                     contentPadding = innerPadding,
                     onNotificationClick = { },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    onNavigateToAdd = { navController.navigate(AddRoute()) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    onNavigateToAdd = { navController.navigate(AddPantryItemRoute("KULKAS")) },
                     onNavigateToPantry = { navController.navigate(PantryRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }
                 )
             }
@@ -173,7 +170,7 @@ fun PantrickNavHost(
                     currentUser = currentUser,
                     items = pantryItems,
                     pantryViewModel = pantryViewModel,
-                    onNavigateToAdd = { location -> navController.navigate(AddRoute(location.name)) { launchSingleTop = true } },
+                    onNavigateToAdd = { location -> navController.navigate(AddPantryItemRoute(location.name)) },
                     onNavigateToEdit = { itemId -> navController.navigate(EditIngredientRoute(itemId)) { launchSingleTop = true } },
                     onPlanMealClick = { navController.navigate(RecipesRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
@@ -181,20 +178,34 @@ fun PantrickNavHost(
                 )
             }
 
-            composable<AddRoute> { backStackEntry ->
-                val addRoute = try {
-                    backStackEntry.toRoute<AddRoute>()
+            // Rute form input bahan baru di Pantry
+            composable<AddPantryItemRoute> { backStackEntry ->
+                val addPantryRoute = try {
+                    backStackEntry.toRoute<AddPantryItemRoute>()
                 } catch (e: Exception) {
                     null
                 }
-                val initialLoc = StorageLocation.entries.find { it.name == addRoute?.initialLocation } ?: StorageLocation.KULKAS
+                val initialLoc = StorageLocation.entries.find { it.name == addPantryRoute?.initialLocation } ?: StorageLocation.KULKAS
 
-                AddIngredientScreen(
+                AddPantryItemScreen(
                     currentUser = currentUser,
                     pantryViewModel = pantryViewModel,
                     initialLocation = initialLoc,
                     onSaveSuccess = { navController.popBackStack() },
                     onNavigateBack = { navController.popBackStack() },
+                    contentPadding = innerPadding
+                )
+            }
+
+            // Rute AddRoute untuk Recipe Matcher (Tombol + di footer navigasi bawah)
+            composable<AddRoute> {
+                AddIngredientScreen(
+                    currentUser = currentUser,
+                    pantryViewModel = pantryViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToRecipeDetail = { recipeId ->
+                        navController.navigate(RecipeDetailRoute(recipeId))
+                    },
                     contentPadding = innerPadding
                 )
             }
@@ -215,7 +226,6 @@ fun PantrickNavHost(
                 RecipesScreen(
                     contentPadding = innerPadding,
                     onNavigateToDetail = { recipeId ->
-                        Log.d(TAG, "Navigating to RecipeDetailRoute with id: $recipeId")
                         navController.navigate(RecipeDetailRoute(recipeId))
                     }
                 )
@@ -223,12 +233,10 @@ fun PantrickNavHost(
 
             composable<RecipeDetailRoute> { backStackEntry ->
                 val detailRoute = backStackEntry.toRoute<RecipeDetailRoute>()
-
                 RecipeDetailScreen(
                     recipeId = detailRoute.recipeId,
                     contentPadding = innerPadding,
                     onNavigateBack = {
-                        Log.d(TAG, "Navigating back from RecipeDetail")
                         navController.popBackStack()
                     }
                 )
