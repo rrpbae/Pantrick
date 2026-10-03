@@ -54,10 +54,13 @@ fun Application.module(
     savedRecipeRepository: SavedRecipeRepository = InMemorySavedRecipeRepository(),
     passwordResetService: PasswordResetService? = null
 ) {
-    val actualRecipeRepo = recipeRepository ?: run {
+    val actualRecipeRepo = recipeRepository ?: try {
         appLogger.info("Initializing Recipe Repository from dataset...")
         val datasetResult = RecipeDatasetLoader.loadDataset()
         InMemoryRecipeRepository(datasetResult.recipes)
+    } catch (e: Exception) {
+        appLogger.warn("Dataset loading failed, falling back to empty RecipeRepository: ${e.message}")
+        InMemoryRecipeRepository(emptyList())
     }
 
     val cookingHistoryRepo = InMemoryCookingHistoryRepository()
