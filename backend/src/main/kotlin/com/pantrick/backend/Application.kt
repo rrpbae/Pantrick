@@ -4,6 +4,7 @@ import com.pantrick.backend.models.ErrorResponse
 import com.pantrick.backend.repository.InMemoryUserRepository
 import com.pantrick.backend.repository.UserRepository
 import com.pantrick.backend.routes.authRoutes
+import com.pantrick.backend.routes.legalRoutes
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -46,5 +47,6 @@ fun Application.module(userRepository: UserRepository = InMemoryUserRepository()
 
     routing {
         authRoutes(userRepository)
+        legalRoutes()
     }
 }
