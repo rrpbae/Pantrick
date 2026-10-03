@@ -18,8 +18,10 @@ import java.io.File
 
 private val jwtSecret = System.getenv("JWT_SECRET") ?: "pantrick_jwt_secret_key_dev_mode_2026"
 private val jwtIssuer = "pantrick-backend"
+private val jwtAudience = "pantrick-android-app"
 private val jwtVerifier = JWT.require(Algorithm.HMAC256(jwtSecret))
     .withIssuer(jwtIssuer)
+    .withAudience(jwtAudience)
     .build()
 
 fun ApplicationCall.getAuthenticatedUserId(): Int? {

@@ -8,11 +8,12 @@ interface UserRepository {
     fun findById(id: Int): User?
     fun createUser(name: String, email: String, passwordHash: String): User
     fun updatePasswordHash(userId: Int, newPasswordHash: String): Boolean
+    fun updateUserName(userId: Int, newName: String): User?
 }
 
 class InMemoryUserRepository : UserRepository {
-    private val users = mutableListOf<User>()
-    private var nextId = 1
+    private val users = java.util.concurrent.CopyOnWriteArrayList<User>()
+    private val nextId = java.util.concurrent.atomic.AtomicInteger(1)
 
     init {
         // Seed default users for testing login
@@ -30,7 +31,7 @@ class InMemoryUserRepository : UserRepository {
 
     private fun createUserInternal(name: String, email: String, passwordHash: String): User {
         val user = User(
-            id = nextId++,
+            id = nextId.getAndIncrement(),
             name = name,
             email = email,
             passwordHash = passwordHash
@@ -59,6 +60,16 @@ class InMemoryUserRepository : UserRepository {
             if (index == -1) return false
             users[index] = users[index].copy(passwordHash = newPasswordHash)
             return true
+        }
+    }
+
+    override fun updateUserName(userId: Int, newName: String): User? {
+        synchronized(this) {
+            val index = users.indexOfFirst { it.id == userId }
+            if (index == -1) return null
+            val updatedUser = users[index].copy(name = newName)
+            users[index] = updatedUser
+            return updatedUser
         }
     }
 }

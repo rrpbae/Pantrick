@@ -57,7 +57,16 @@ data class ShoppingListItem(
     val quantity: String? = null,
     val unit: String? = null,
     val recipeId: String? = null,
+    val isPurchased: Boolean = false,
     val createdAt: String
+)
+
+/**
+ * DTO request untuk menandai item shopping list sebagai sudah dibeli.
+ */
+@Serializable
+data class UpdateShoppingListItemRequest(
+    val isPurchased: Boolean? = null
 )
 
 /**

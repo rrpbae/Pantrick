@@ -19,6 +19,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
@@ -251,6 +252,13 @@ fun Route.savedRecipeRoutes(savedRecipeService: SavedRecipeService) {
                 ErrorResponse(success = false, message = "Nama koleksi tidak valid")
             )
 
+            if (body.name.isBlank()) {
+                return@put call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse(success = false, message = "Nama koleksi tidak boleh kosong")
+                )
+            }
+
             val updated = savedRecipeService.updateCollection(userId, collectionId, body.name.trim())
             if (updated == null) {
                 call.respond(
@@ -422,23 +430,88 @@ fun Route.savedRecipeRoutes(savedRecipeService: SavedRecipeService) {
                 ErrorResponse(success = false, message = "Data item belanja tidak valid")
             )
 
-            val item = savedRecipeService.addShoppingItem(
-                userId = userId,
-                ingredientName = body.ingredientName,
-                quantity = body.quantity,
-                unit = body.unit,
-                recipeId = body.recipeId
+            if (body.ingredientName.isBlank()) {
+                return@post call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse(success = false, message = "Nama bahan tidak boleh kosong")
+                )
+            }
+
+            try {
+                val item = savedRecipeService.addShoppingItem(
+                    userId = userId,
+                    ingredientName = body.ingredientName,
+                    quantity = body.quantity,
+                    unit = body.unit,
+                    recipeId = body.recipeId
+                )
+                call.respond(
+                    HttpStatusCode.Created,
+                    ShoppingListResponse(
+                        success = true,
+                        message = "Bahan berhasil ditambahkan ke keranjang belanja",
+                        total = 1,
+                        data = listOf(item)
+                    )
+                )
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse(success = false, message = e.message ?: "Validasi data gagal"))
+            }
+        }
+
+        // DELETE /api/shopping-list/items/{id}
+        delete("/items/{id}") {
+            val userId = call.getAuthenticatedUserId() ?: return@delete call.respond(
+                HttpStatusCode.Unauthorized,
+                ErrorResponse(success = false, message = "Token autentikasi tidak valid atau belum disediakan")
+            )
+            val itemId = call.parameters["id"] ?: return@delete call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse(success = false, message = "ID item belanja tidak valid")
             )
 
-            call.respond(
-                HttpStatusCode.Created,
-                ShoppingListResponse(
-                    success = true,
-                    message = "Bahan berhasil ditambahkan ke keranjang belanja",
-                    total = 1,
-                    data = listOf(item)
+            val deleted = savedRecipeService.deleteShoppingItem(userId, itemId)
+            if (!deleted) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    ErrorResponse(success = false, message = "Item belanja tidak ditemukan atau tidak memiliki akses")
                 )
+            } else {
+                call.respond(
+                    HttpStatusCode.OK,
+                    ErrorResponse(success = true, message = "Item belanja berhasil dihapus")
+                )
+            }
+        }
+
+        // PATCH /api/shopping-list/items/{id}/purchased
+        patch("/items/{id}/purchased") {
+            val userId = call.getAuthenticatedUserId() ?: return@patch call.respond(
+                HttpStatusCode.Unauthorized,
+                ErrorResponse(success = false, message = "Token autentikasi tidak valid atau belum disediakan")
             )
+            val itemId = call.parameters["id"] ?: return@patch call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse(success = false, message = "ID item belanja tidak valid")
+            )
+
+            val updatedItem = savedRecipeService.markShoppingItemAsPurchased(userId, itemId)
+            if (updatedItem == null) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    ErrorResponse(success = false, message = "Item belanja tidak ditemukan atau tidak memiliki akses")
+                )
+            } else {
+                call.respond(
+                    HttpStatusCode.OK,
+                    ShoppingListResponse(
+                        success = true,
+                        message = "Item berhasil ditandai sebagai sudah dibeli",
+                        total = 1,
+                        data = listOf(updatedItem)
+                    )
+                )
+            }
         }
 
         // POST /api/shopping-list/add-missing-ingredients

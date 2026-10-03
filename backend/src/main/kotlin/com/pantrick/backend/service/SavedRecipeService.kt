@@ -45,7 +45,9 @@ class SavedRecipeService(
 
     // --- COLLECTIONS ---
     fun createCollection(userId: Int, name: String): RecipeCollection {
-        return savedRecipeRepository.createCollection(userId, name)
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) throw IllegalArgumentException("Nama koleksi tidak boleh kosong")
+        return savedRecipeRepository.createCollection(userId, trimmed)
     }
 
     fun getCollections(userId: Int): List<RecipeCollection> {
@@ -63,7 +65,9 @@ class SavedRecipeService(
     }
 
     fun updateCollection(userId: Int, collectionId: String, name: String): RecipeCollection? {
-        return savedRecipeRepository.updateCollection(userId, collectionId, name)
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) throw IllegalArgumentException("Nama koleksi tidak boleh kosong")
+        return savedRecipeRepository.updateCollection(userId, collectionId, trimmed)
     }
 
     fun deleteCollection(userId: Int, collectionId: String): Boolean {
@@ -96,11 +100,21 @@ class SavedRecipeService(
 
     // --- SHOPPING LIST ---
     fun addShoppingItem(userId: Int, ingredientName: String, quantity: String?, unit: String?, recipeId: String?): ShoppingListItem {
-        return shoppingListRepository.addItem(userId, ingredientName, quantity, unit, recipeId)
+        val name = ingredientName.trim()
+        if (name.isBlank()) throw IllegalArgumentException("Nama bahan tidak boleh kosong")
+        return shoppingListRepository.addItem(userId, name, quantity?.trim()?.ifBlank { null }, unit?.trim()?.ifBlank { null }, recipeId)
     }
 
     fun getShoppingList(userId: Int): List<ShoppingListItem> {
         return shoppingListRepository.getItemsByUserId(userId)
+    }
+
+    fun deleteShoppingItem(userId: Int, itemId: String): Boolean {
+        return shoppingListRepository.deleteItem(userId, itemId)
+    }
+
+    fun markShoppingItemAsPurchased(userId: Int, itemId: String): ShoppingListItem? {
+        return shoppingListRepository.markAsPurchased(userId, itemId)
     }
 
     /**

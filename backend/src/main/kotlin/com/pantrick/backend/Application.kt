@@ -15,13 +15,17 @@ import com.pantrick.backend.repository.UserRepository
 import com.pantrick.backend.routes.authRoutes
 import com.pantrick.backend.routes.homeRoutes
 import com.pantrick.backend.routes.legalRoutes
+import com.pantrick.backend.routes.notificationRoutes
 import com.pantrick.backend.routes.pantryRoutes
+import com.pantrick.backend.routes.profileRoutes
 import com.pantrick.backend.routes.recipeRoutes
 import com.pantrick.backend.routes.recommendationRoutes
 import com.pantrick.backend.routes.savedRecipeRoutes
 import com.pantrick.backend.service.HomeService
+import com.pantrick.backend.service.NotificationService
 import com.pantrick.backend.service.PantryService
 import com.pantrick.backend.service.PasswordResetService
+import com.pantrick.backend.service.ProfileService
 import com.pantrick.backend.service.RecipeDatasetLoader
 import com.pantrick.backend.service.RecipeService
 import com.pantrick.backend.service.RecommendationService
@@ -72,6 +76,8 @@ fun Application.module(
     val pantryService = PantryService(pantryRepository)
     val homeService = HomeService(userRepository, pantryRepository, actualRecipeRepo)
     val recommendationService = RecommendationService(actualRecipeRepo, pantryRepository, savedRecipeRepository)
+    val notificationService = NotificationService(pantryRepository)
+    val profileService = ProfileService(userRepository)
     val savedRecipeService = SavedRecipeService(
         savedRecipeRepository = savedRecipeRepository,
         recipeRepository = actualRecipeRepo,
@@ -104,6 +110,8 @@ fun Application.module(
     routing {
         authRoutes(userRepository, actualPasswordResetService)
         legalRoutes()
+        notificationRoutes(notificationService)
+        profileRoutes(profileService)
         // Recommendation & Saved Recipe routes HARUS didaftarkan SEBELUM recipeRoutes
         // agar rute spesifik tidak tertangkap oleh /{id}
         recommendationRoutes(recommendationService)

@@ -335,4 +335,43 @@ class RecipeSavedTest {
         }
         assertEquals("Unsave recipe harus HTTP 200", HttpStatusCode.OK, unsaveResp.status)
     }
+
+    @Test
+    fun testShoppingListDeleteAndPurchasedFlow() {
+        val savedRepo = InMemorySavedRecipeRepository()
+        val shopRepo = InMemoryShoppingListRepository()
+        val service = SavedRecipeService(savedRepo, InMemoryRecipeRepository(createTestRecipes()), InMemoryCookingHistoryRepository(), shopRepo)
+
+        val item = service.addShoppingItem(userId = 1, ingredientName = "Minyak Goreng", quantity = "1.0", unit = "botol", recipeId = null)
+        assertNotNull(item)
+        assertEquals("Minyak Goreng", item!!.ingredientName)
+        assertFalse(item.isPurchased)
+
+        // User 2 cannot mark item as purchased or delete it
+        assertNull(service.markShoppingItemAsPurchased(userId = 2, itemId = item.id))
+        assertFalse(service.deleteShoppingItem(userId = 2, itemId = item.id))
+
+        // User 1 marks as purchased
+        val purchased = service.markShoppingItemAsPurchased(userId = 1, itemId = item.id)
+        assertNotNull(purchased)
+        assertTrue(purchased!!.isPurchased)
+
+        // User 1 deletes item
+        assertTrue(service.deleteShoppingItem(userId = 1, itemId = item.id))
+        val remaining = service.getShoppingList(userId = 1)
+        assertTrue(remaining.none { it.id == item.id })
+    }
+
+    @Test
+    fun testCollectionBlankNameValidation() {
+        val service = SavedRecipeService(InMemorySavedRecipeRepository(), InMemoryRecipeRepository(createTestRecipes()), InMemoryCookingHistoryRepository(), InMemoryShoppingListRepository())
+        
+        try {
+            service.createCollection(userId = 1, name = "  ")
+            org.junit.Assert.fail("Harus melempar IllegalArgumentException untuk nama koleksi kosong")
+        } catch (e: IllegalArgumentException) {
+            assertEquals("Nama koleksi tidak boleh kosong", e.message)
+        }
+    }
 }
+
