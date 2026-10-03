@@ -14,6 +14,7 @@ import com.pantrick.backend.repository.SavedRecipeRepository
 import com.pantrick.backend.repository.UserRepository
 import com.pantrick.backend.routes.authRoutes
 import com.pantrick.backend.routes.homeRoutes
+import com.pantrick.backend.routes.legalRoutes
 import com.pantrick.backend.routes.pantryRoutes
 import com.pantrick.backend.routes.recipeRoutes
 import com.pantrick.backend.routes.recommendationRoutes
@@ -99,6 +100,7 @@ fun Application.module(
 
     routing {
         authRoutes(userRepository, actualPasswordResetService)
+        legalRoutes()
         // Recommendation & Saved Recipe routes HARUS didaftarkan SEBELUM recipeRoutes
         // agar rute spesifik tidak tertangkap oleh /{id}
         recommendationRoutes(recommendationService)
