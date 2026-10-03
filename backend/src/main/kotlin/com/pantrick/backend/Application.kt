@@ -3,6 +3,7 @@ package com.pantrick.backend
 import com.pantrick.backend.models.ErrorResponse
 import com.pantrick.backend.repository.InMemoryCookingHistoryRepository
 import com.pantrick.backend.repository.InMemoryPantryRepository
+import com.pantrick.backend.repository.InMemoryPasswordResetTokenRepository
 import com.pantrick.backend.repository.InMemoryRecipeRepository
 import com.pantrick.backend.repository.InMemorySavedRecipeRepository
 import com.pantrick.backend.repository.InMemoryShoppingListRepository
@@ -19,6 +20,7 @@ import com.pantrick.backend.routes.recommendationRoutes
 import com.pantrick.backend.routes.savedRecipeRoutes
 import com.pantrick.backend.service.HomeService
 import com.pantrick.backend.service.PantryService
+import com.pantrick.backend.service.PasswordResetService
 import com.pantrick.backend.service.RecipeDatasetLoader
 import com.pantrick.backend.service.RecipeService
 import com.pantrick.backend.service.RecommendationService
@@ -48,7 +50,8 @@ fun Application.module(
     userRepository: UserRepository = InMemoryUserRepository(),
     recipeRepository: RecipeRepository? = null,
     pantryRepository: PantryRepository = InMemoryPantryRepository(),
-    savedRecipeRepository: SavedRecipeRepository = InMemorySavedRecipeRepository()
+    savedRecipeRepository: SavedRecipeRepository = InMemorySavedRecipeRepository(),
+    passwordResetService: PasswordResetService? = null
 ) {
     val actualRecipeRepo = recipeRepository ?: run {
         appLogger.info("Initializing Recipe Repository from dataset...")
@@ -58,6 +61,8 @@ fun Application.module(
 
     val cookingHistoryRepo = InMemoryCookingHistoryRepository()
     val shoppingListRepo = InMemoryShoppingListRepository()
+    val passwordResetTokenRepository = InMemoryPasswordResetTokenRepository()
+    val actualPasswordResetService = passwordResetService ?: PasswordResetService(userRepository, passwordResetTokenRepository)
 
     val recipeService = RecipeService(actualRecipeRepo)
     val pantryService = PantryService(pantryRepository)
@@ -93,7 +98,7 @@ fun Application.module(
     }
 
     routing {
-        authRoutes(userRepository)
+        authRoutes(userRepository, actualPasswordResetService)
         // Recommendation & Saved Recipe routes HARUS didaftarkan SEBELUM recipeRoutes
         // agar rute spesifik tidak tertangkap oleh /{id}
         recommendationRoutes(recommendationService)
