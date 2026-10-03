@@ -42,3 +42,36 @@ data class ErrorResponse(
     val message: String,
     val errors: Map<String, String>? = null
 )
+
+/** Request body untuk endpoint POST /api/auth/forgot-password */
+@Serializable
+data class ForgotPasswordRequest(
+    val email: String? = null
+)
+
+/** Response generik untuk endpoint forgot-password */
+@Serializable
+data class ForgotPasswordResponse(
+    val message: String
+)
+
+/** Response untuk endpoint GET /api/auth/reset-password/verify */
+@Serializable
+data class VerifyResetTokenResponse(
+    val valid: Boolean,
+    val message: String? = null
+)
+
+/** Request body untuk endpoint POST /api/auth/reset-password */
+@Serializable
+data class ResetPasswordRequest(
+    val token: String? = null,
+    val password: String? = null,
+    val passwordConfirmation: String? = null
+)
+
+/** Response untuk endpoint POST /api/auth/reset-password */
+@Serializable
+data class ResetPasswordResponse(
+    val message: String
+)

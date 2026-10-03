@@ -1,9 +1,11 @@
 package com.pantrick.backend
 
 import com.pantrick.backend.models.ErrorResponse
+import com.pantrick.backend.repository.InMemoryPasswordResetTokenRepository
 import com.pantrick.backend.repository.InMemoryUserRepository
 import com.pantrick.backend.repository.UserRepository
 import com.pantrick.backend.routes.authRoutes
+import com.pantrick.backend.service.PasswordResetService
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -23,7 +25,13 @@ fun main() {
 }
 
 
-fun Application.module(userRepository: UserRepository = InMemoryUserRepository()) {
+fun Application.module(
+    userRepository: UserRepository = InMemoryUserRepository(),
+    passwordResetService: PasswordResetService? = null
+) {
+    val passwordResetTokenRepository = InMemoryPasswordResetTokenRepository()
+    val actualPasswordResetService = passwordResetService ?: PasswordResetService(userRepository, passwordResetTokenRepository)
+
     install(ContentNegotiation) {
         json(Json {
             prettyPrint = true
@@ -45,6 +53,6 @@ fun Application.module(userRepository: UserRepository = InMemoryUserRepository()
     }
 
     routing {
-        authRoutes(userRepository)
+        authRoutes(userRepository, actualPasswordResetService)
     }
 }
