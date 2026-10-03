@@ -356,7 +356,6 @@ fun StatelessPantryContent(
 ) {
     val kulkasCount = remember(items) { PantryFilter.countByLocation(items, StorageLocation.KULKAS) }
     val freezerCount = remember(items) { PantryFilter.countByLocation(items, StorageLocation.FREEZER) }
-    val rakKeringCount = remember(items) { PantryFilter.countByLocation(items, StorageLocation.RAK_KERING) }
 
     val urgentItemsOverall = remember(items, todayEpochDay) {
         PantryFilter.expiringItems(items, todayEpochDay)
@@ -412,7 +411,6 @@ fun StatelessPantryContent(
                 selectedLocation = selectedLocation,
                 kulkasCount = kulkasCount,
                 freezerCount = freezerCount,
-                rakKeringCount = rakKeringCount,
                 onLocationSelected = onLocationSelected
             )
         }
@@ -461,7 +459,7 @@ fun StatelessPantryContent(
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Tambah Bahan ke ${selectedLocation.label}",
+                        text = "Tambah Bahan",
                         color = ColorSurfaceWhite,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold

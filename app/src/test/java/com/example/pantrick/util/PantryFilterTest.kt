@@ -99,12 +99,11 @@ class PantryFilterTest {
             createItem("1", "Susu", location = StorageLocation.KULKAS),
             createItem("2", "Keju", location = StorageLocation.KULKAS),
             createItem("3", "Daging", location = StorageLocation.FREEZER),
-            createItem("4", "Beras", location = StorageLocation.RAK_KERING)
+            createItem("4", "Ikan", location = StorageLocation.FREEZER)
         )
 
         assertEquals(2, PantryFilter.countByLocation(items, StorageLocation.KULKAS))
-        assertEquals(1, PantryFilter.countByLocation(items, StorageLocation.FREEZER))
-        assertEquals(1, PantryFilter.countByLocation(items, StorageLocation.RAK_KERING))
+        assertEquals(2, PantryFilter.countByLocation(items, StorageLocation.FREEZER))
     }
 
     // ==================== 3. AMBANG BATAS HARI KEDALUWARSA ====================
@@ -283,7 +282,7 @@ class PantryFilterTest {
             createItem("1", "Susu Cokelat", location = StorageLocation.KULKAS, category = FoodCategory.SUSU_TELUR, daysOffset = 1),
             createItem("2", "Susu Putih", location = StorageLocation.KULKAS, category = FoodCategory.SUSU_TELUR, daysOffset = 10),
             createItem("3", "Bayam Hijau", location = StorageLocation.KULKAS, category = FoodCategory.SAYUR_BUAH, daysOffset = 1),
-            createItem("4", "Susu Bubuk", location = StorageLocation.RAK_KERING, category = FoodCategory.SUSU_TELUR, daysOffset = 1)
+            createItem("4", "Susu Bubuk", location = StorageLocation.FREEZER, category = FoodCategory.SUSU_TELUR, daysOffset = 1)
         )
 
         // Lokasi Kulkas + Chip Expiring + Query "Susu"

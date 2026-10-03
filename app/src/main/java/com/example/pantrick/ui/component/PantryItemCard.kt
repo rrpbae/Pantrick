@@ -233,7 +233,7 @@ fun PantryItemCard(
                 color = pillBgColor
             ) {
                 Text(
-                    text = expiryInfo.pillLabel,
+                    text = if (item.isExpiryEstimated) "~${expiryInfo.pillLabel}" else expiryInfo.pillLabel,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = pillTextColor,
@@ -280,7 +280,7 @@ fun PantryItemCardDarkPreview() {
                 item = PantryItem(
                     id = "2",
                     name = "Beras Putih",
-                    location = StorageLocation.RAK_KERING,
+                    location = StorageLocation.KULKAS,
                     quantityLabel = "5 kg",
                     expiryEpochDay = java.time.LocalDate.now().plusDays(30).toEpochDay(),
                     category = FoodCategory.BUMBU_KERING

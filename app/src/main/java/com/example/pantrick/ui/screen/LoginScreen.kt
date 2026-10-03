@@ -4,7 +4,6 @@ package com.example.pantrick.ui.screen
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -95,7 +94,6 @@ fun LoginScreen(
     val emailInvalidMsg = stringResource(R.string.val_email_invalid)
     val passwordEmptyMsg = stringResource(R.string.val_password_empty)
     val passwordShortMsg = stringResource(R.string.val_password_short)
-    val comingSoonMsg = stringResource(R.string.feature_coming_soon)
     val loginSuccessMsg = stringResource(R.string.auth_success_login)
 
     // [Materi: Aturan Validasi Lokal]
@@ -170,11 +168,6 @@ fun LoginScreen(
                     }
                 }
             },
-            onForgotPasswordClick = {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(comingSoonMsg)
-                }
-            },
             onSignUpClick = onNavigateToSignUp,
             modifier = Modifier.padding(innerPadding)
         )
@@ -190,7 +183,6 @@ fun StatelessLoginContent(
     onPasswordVisibilityToggle: () -> Unit,
     onRememberMeChange: (Boolean) -> Unit,
     onLoginClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit,
     onSignUpClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -265,36 +257,23 @@ fun StatelessLoginContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 6. Baris "Ingat saya" & "Lupa kata sandi?"
+        // 6. Baris "Ingat saya"
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = viewState.rememberMe,
-                    onCheckedChange = onRememberMeChange,
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = MaterialTheme.colorScheme.primary,
-                        uncheckedColor = MaterialTheme.colorScheme.outline
-                    )
+            Checkbox(
+                checked = viewState.rememberMe,
+                onCheckedChange = onRememberMeChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.outline
                 )
-                Text(
-                    text = stringResource(R.string.remember_me),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
+            )
             Text(
-                text = stringResource(R.string.forgot_password),
+                text = stringResource(R.string.remember_me),
                 fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { onForgotPasswordClick() }
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
 
@@ -337,7 +316,6 @@ fun LoginScreenPreview() {
             onPasswordVisibilityToggle = {},
             onRememberMeChange = {},
             onLoginClick = {},
-            onForgotPasswordClick = {},
             onSignUpClick = {}
         )
     }
@@ -359,7 +337,6 @@ fun LoginScreenDarkPreview() {
             onPasswordVisibilityToggle = {},
             onRememberMeChange = {},
             onLoginClick = {},
-            onForgotPasswordClick = {},
             onSignUpClick = {}
         )
     }

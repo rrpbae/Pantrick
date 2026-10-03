@@ -150,12 +150,13 @@ fun ExpiringItemCard(
 ) {
     // [Materi: ExpiryStatus Helper] Format badge kedaluwarsa sesuai single source of truth ExpiryStatus
     val expiryInfo = ExpiryStatus.evaluate(item.daysLeft)
-    val badgeText = expiryInfo.badgeLabel
+    val badgeText = if (item.isExpiryEstimated) "~${expiryInfo.badgeLabel}" else expiryInfo.badgeLabel
     val badgeBgColor = if (expiryInfo.isUrgent) ColorUrgencyRed else Color(0xB34A2C21)
 
     // [Materi: if-else Expression] Baris detail teks kadaluarsa
     val isUrgent = expiryInfo.isUrgent
-    val detailText = "${expiryInfo.pillLabel} • ${item.quantityLabel}"
+    val pillLabel = if (item.isExpiryEstimated) "~${expiryInfo.pillLabel}" else expiryInfo.pillLabel
+    val detailText = "$pillLabel • ${item.quantityLabel}"
     val detailColor = if (isUrgent) ColorUrgencyRed else MaterialTheme.colorScheme.onSurfaceVariant
 
     Card(

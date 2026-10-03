@@ -5,21 +5,40 @@ package com.example.pantrick.ui.screen
 import android.content.res.Configuration
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.pantrick.core.ui.theme.ColorDarkChocolate
+import com.example.pantrick.core.ui.theme.ColorForestGreen
 import com.example.pantrick.core.ui.theme.PantrickTheme
 import com.example.pantrick.data.model.PantryItem
 import com.example.pantrick.data.model.Recipe
@@ -27,9 +46,9 @@ import com.example.pantrick.data.model.RecipeCatalog
 import com.example.pantrick.data.model.StorageLocation
 import com.example.pantrick.data.model.User
 import com.example.pantrick.ui.component.EmptyPantryState
+import com.example.pantrick.ui.component.ExpiringItemCard
 import com.example.pantrick.ui.component.GreetingCard
 import com.example.pantrick.ui.component.HomeHeader
-import com.example.pantrick.ui.component.NeedsAttentionSection
 import com.example.pantrick.ui.component.RecipePairingSection
 import com.example.pantrick.ui.component.SummaryCardsRow
 import com.example.pantrick.util.PantrickConstants
@@ -66,13 +85,13 @@ fun HomeScreen(
 
     val totalCount = items.size
     val expiringCount = items.count { it.daysLeft <= PantrickConstants.EXPIRING_THRESHOLD_DAYS }
-    val hasAnyExpiring = expiringCount > 0
 
-    // Filter bahan mendesak secara keseluruhan tanpa chip kategori beranda
-    val filteredExpiringItems = remember(items) {
-        items.filter { it.daysLeft <= PantrickConstants.EXPIRING_THRESHOLD_DAYS }.sortedBy { it.daysLeft }
+    // Bahan terbaru yang diinput user (maksimal 5 item terakhir, urut dari yang paling baru ditambahkan)
+    val recentItems = remember(items) {
+        items.sortedByDescending { it.id.toLongOrNull() ?: 0L }.take(5)
     }
 
+    // Rekomendasi resep dihitung dari bahan yang ada di pantry pengguna
     val matchedRecipe = remember(items) {
         RecipeCatalog.findBestMatch(items, RecipeCatalog.MIN_RECIPE_MATCH_PERCENT)
     }
@@ -82,9 +101,8 @@ fun HomeScreen(
         greeting = greeting,
         totalCount = totalCount,
         expiringCount = expiringCount,
-        expiringItems = filteredExpiringItems,
-        hasAnyExpiringItemsOverall = hasAnyExpiring,
-        recipe = matchedRecipe,
+        recentItems = recentItems,
+        matchedRecipe = matchedRecipe,
         isFavorite = isFavorite,
         isPantryEmpty = items.isEmpty(),
         onFavoriteToggle = {
@@ -115,9 +133,8 @@ fun StatelessHomeContent(
     greeting: String,
     totalCount: Int,
     expiringCount: Int,
-    expiringItems: List<PantryItem>,
-    hasAnyExpiringItemsOverall: Boolean,
-    recipe: Recipe?,
+    recentItems: List<PantryItem>,
+    matchedRecipe: Recipe?,
     isFavorite: Boolean,
     isPantryEmpty: Boolean,
     onFavoriteToggle: () -> Unit,
@@ -169,8 +186,6 @@ fun StatelessHomeContent(
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
 
-        // Filter kategori (Semua, Kulkas, Freezer, Rak Kering) telah dihapus sesuai permintaan.
-
         // [Materi: Conditional UI / Empty State vs Content]
         if (isPantryEmpty) {
             item {
@@ -179,21 +194,22 @@ fun StatelessHomeContent(
                 )
             }
         } else {
+            // 4. Section Bahan Terbaru (scroll horizontal, max 5)
             item {
-                NeedsAttentionSection(
-                    items = expiringItems,
-                    hasAnyExpiringItemsOverall = hasAnyExpiringItemsOverall,
+                RecentIngredientsSection(
+                    items = recentItems,
                     onViewAllClick = onViewAllAttentionClick,
                     onFindRecipeClick = onFindRecipeClick
                 )
             }
 
-            if (recipe != null) {
+            // 5. Section "Smart Recipe Pairings" (hanya jika ada resep yang cocok)
+            if (matchedRecipe != null) {
                 item { Spacer(modifier = Modifier.height(24.dp)) }
 
                 item {
                     RecipePairingSection(
-                        recipe = recipe,
+                        recipe = matchedRecipe,
                         isFavorite = isFavorite,
                         onFavoriteToggle = onFavoriteToggle,
                         onViewAllClick = onViewAllAttentionClick,
@@ -208,35 +224,111 @@ fun StatelessHomeContent(
     }
 }
 
+// Komponen deretan kartu bahan terbaru secara horizontal
+@Composable
+fun RecentIngredientsSection(
+    items: List<PantryItem>,
+    onViewAllClick: () -> Unit,
+    onFindRecipeClick: (PantryItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = PantrickConstants.HOME_HORIZONTAL_PADDING),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(ColorForestGreen)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Bahan Terbaru",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ColorDarkChocolate
+                )
+            }
+
+            Text(
+                text = "Lihat Semua ›",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = ColorForestGreen,
+                modifier = Modifier.clickable { onViewAllClick() }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (items.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PantrickConstants.HOME_HORIZONTAL_PADDING, vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Belum ada bahan di pantry.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        } else {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = PantrickConstants.HOME_HORIZONTAL_PADDING),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                items(items, key = { it.id }) { item ->
+                    ExpiringItemCard(
+                        item = item,
+                        onFindRecipeClick = { onFindRecipeClick(item) }
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun HomeScreenPreview() {
+    val sampleItems = listOf(
+        PantryItem("1", "Susu Segar", StorageLocation.KULKAS, "500 ml", LocalDate.now().plusDays(1).toEpochDay()),
+        PantryItem("2", "Daging Ayam", StorageLocation.FREEZER, "500 gr", LocalDate.now().plusDays(2).toEpochDay()),
+        PantryItem("3", "Telur Ayam", StorageLocation.KULKAS, "6 butir", LocalDate.now().plusDays(10).toEpochDay())
+    )
+    val sampleRecipe = RecipeCatalog.recipes.firstOrNull()?.let {
+        Recipe(
+            id = it.id,
+            title = it.title,
+            description = it.description,
+            durationMinutes = it.durationMinutes,
+            servings = it.servings,
+            matchPercent = 50,
+            usesLabel = "Cocok dengan bahanmu",
+            readyCount = 2,
+            totalCount = 4,
+            missingIngredient = "Keju",
+            imageRes = it.imageRes
+        )
+    }
     PantrickTheme {
         StatelessHomeContent(
             userName = "Budi Santoso",
             greeting = "Selamat pagi, Budi!",
-            totalCount = 3,
+            totalCount = sampleItems.size,
             expiringCount = 2,
-            expiringItems = listOf(
-                PantryItem("1", "Susu Segar", StorageLocation.KULKAS, "500 ml", LocalDate.now().plusDays(1).toEpochDay()),
-                PantryItem("2", "Daging Ayam", StorageLocation.FREEZER, "500 gr", LocalDate.now().plusDays(2).toEpochDay())
-            ),
-            hasAnyExpiringItemsOverall = true,
-            recipe = RecipeCatalog.recipes.firstOrNull()?.let {
-                Recipe(
-                    id = it.id,
-                    title = it.title,
-                    description = it.description,
-                    durationMinutes = it.durationMinutes,
-                    servings = it.servings,
-                    matchPercent = 50,
-                    usesLabel = "Cocok dengan bahanmu",
-                    readyCount = 2,
-                    totalCount = 4,
-                    missingIngredient = "Keju",
-                    imageRes = it.imageRes
-                )
-            },
+            recentItems = sampleItems,
+            matchedRecipe = sampleRecipe,
             isFavorite = false,
             isPantryEmpty = false,
             onFavoriteToggle = {},
@@ -261,9 +353,8 @@ fun HomeScreenEmptyPreview() {
             greeting = "Selamat malam, Siti!",
             totalCount = 0,
             expiringCount = 0,
-            expiringItems = emptyList(),
-            hasAnyExpiringItemsOverall = false,
-            recipe = null,
+            recentItems = emptyList(),
+            matchedRecipe = null,
             isFavorite = false,
             isPantryEmpty = true,
             onFavoriteToggle = {},

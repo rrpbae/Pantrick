@@ -130,7 +130,7 @@ fun PantryEmptyStateView(
                     modifier = Modifier.height(44.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.btn_add_to_location, locationName),
+                        text = stringResource(R.string.btn_add_to_location),
                         fontWeight = FontWeight.Bold
                     )
                 }

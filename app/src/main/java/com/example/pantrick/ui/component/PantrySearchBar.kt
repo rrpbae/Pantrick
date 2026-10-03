@@ -39,7 +39,6 @@ fun PantrySearchBar(
     val placeholderText = when (activeLocation) {
         StorageLocation.KULKAS -> stringResource(R.string.search_placeholder_kulkas)
         StorageLocation.FREEZER -> stringResource(R.string.search_placeholder_freezer)
-        StorageLocation.RAK_KERING -> stringResource(R.string.search_placeholder_rak_kering)
     }
 
     OutlinedTextField(

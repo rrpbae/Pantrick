@@ -36,6 +36,7 @@ import com.example.pantrick.ui.screen.AddPantryItemScreen
 import com.example.pantrick.ui.screen.EditIngredientScreen
 import com.example.pantrick.ui.screen.HomeScreen
 import com.example.pantrick.ui.screen.LoginScreen
+import com.example.pantrick.ui.screen.NotificationScreen
 import com.example.pantrick.ui.screen.PantryScreen
 import com.example.pantrick.ui.screen.ProfileScreen
 import com.example.pantrick.ui.screen.SignUpScreen
@@ -158,7 +159,7 @@ fun PantrickNavHost(
                     currentUser = currentUser,
                     items = pantryItems,
                     contentPadding = innerPadding,
-                    onNotificationClick = { },
+                    onNotificationClick = { navController.navigate(NotificationRoute) },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     onNavigateToAdd = { navController.navigate(AddPantryItemRoute("KULKAS")) },
                     onNavigateToPantry = { navController.navigate(PantryRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }
@@ -203,9 +204,19 @@ fun PantrickNavHost(
                     currentUser = currentUser,
                     pantryViewModel = pantryViewModel,
                     onNavigateBack = { navController.popBackStack() },
+                    onNotificationClick = { navController.navigate(NotificationRoute) },
+                    onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     onNavigateToRecipeDetail = { recipeId ->
                         navController.navigate(RecipeDetailRoute(recipeId))
                     },
+                    contentPadding = innerPadding
+                )
+            }
+
+            composable<NotificationRoute> {
+                NotificationScreen(
+                    items = pantryItems,
+                    onNavigateBack = { navController.popBackStack() },
                     contentPadding = innerPadding
                 )
             }

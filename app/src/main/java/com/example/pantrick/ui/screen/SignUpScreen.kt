@@ -4,10 +4,8 @@ package com.example.pantrick.ui.screen
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,8 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -37,12 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,7 +67,6 @@ data class SignUpViewState(
     val isRepeatPasswordError: Boolean = false,
     val repeatPasswordErrorMessage: String = "",
     val isRepeatPasswordVisible: Boolean = false,
-    val isTermsAccepted: Boolean = false,
     val isFormValid: Boolean = false,
     val isLoading: Boolean = false
 )
@@ -101,7 +93,6 @@ fun SignUpScreen(
     var isRepeatPasswordTouched by rememberSaveable { mutableStateOf(false) }
     var isRepeatPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
-    var isTermsAccepted by rememberSaveable { mutableStateOf(false) }
     var isLoading by rememberSaveable { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
@@ -122,7 +113,7 @@ fun SignUpScreen(
     val isEmailValid = email.isNotBlank() && email.contains("@") && email.contains(".")
     val isPasswordValid = password.length >= PantrickConstants.MIN_PASSWORD_LENGTH
     val isRepeatPasswordValid = repeatPassword.isNotEmpty() && repeatPassword == password
-    val isFormValid = isNameValid && isEmailValid && isPasswordValid && isRepeatPasswordValid && isTermsAccepted
+    val isFormValid = isNameValid && isEmailValid && isPasswordValid && isRepeatPasswordValid
 
     // [Materi: Error Messaging]
     val nameErrorMessage = if (isNameTouched && !isNameValid) nameEmptyMsg else ""
@@ -151,7 +142,6 @@ fun SignUpScreen(
         isRepeatPasswordError = isRepeatPasswordTouched && !isRepeatPasswordValid,
         repeatPasswordErrorMessage = repeatPasswordErrorMessage,
         isRepeatPasswordVisible = isRepeatPasswordVisible,
-        isTermsAccepted = isTermsAccepted,
         isFormValid = isFormValid,
         isLoading = isLoading
     )
@@ -180,7 +170,6 @@ fun SignUpScreen(
                 isRepeatPasswordTouched = true
             },
             onRepeatPasswordVisibilityToggle = { isRepeatPasswordVisible = !isRepeatPasswordVisible },
-            onTermsChange = { isTermsAccepted = it },
             onCreateAccountClick = {
                 if (isFormValid && !isLoading) {
                     coroutineScope.launch {
@@ -227,7 +216,6 @@ fun StatelessSignUpContent(
     onPasswordVisibilityToggle: () -> Unit,
     onRepeatPasswordChange: (String) -> Unit,
     onRepeatPasswordVisibilityToggle: () -> Unit,
-    onTermsChange: (Boolean) -> Unit,
     onCreateAccountClick: () -> Unit,
     onLoginClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -331,55 +319,9 @@ fun StatelessSignUpContent(
             keyboardType = KeyboardType.Password
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // 8. Baris Checkbox + buildAnnotatedString Syarat & Ketentuan Bahasa Indonesia
-        val termsColor = MaterialTheme.colorScheme.primary
-        val textColor = MaterialTheme.colorScheme.onSurfaceVariant
-        val prefix = stringResource(R.string.terms_prefix)
-        val tos = stringResource(R.string.terms_service)
-        val andText = stringResource(R.string.terms_and)
-        val privacy = stringResource(R.string.terms_privacy)
-
-        val annotatedTermsText = remember(termsColor, textColor, prefix, tos, andText, privacy) {
-            buildAnnotatedString {
-                append(prefix)
-                withStyle(style = SpanStyle(color = termsColor, fontWeight = FontWeight.Bold)) {
-                    append(tos)
-                }
-                append(andText)
-                withStyle(style = SpanStyle(color = termsColor, fontWeight = FontWeight.Bold)) {
-                    append(privacy)
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = viewState.isTermsAccepted,
-                onCheckedChange = onTermsChange,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = MaterialTheme.colorScheme.primary,
-                    uncheckedColor = MaterialTheme.colorScheme.outline
-                )
-            )
-            Text(
-                text = annotatedTermsText,
-                fontSize = 12.sp,
-                color = textColor,
-                lineHeight = 16.sp,
-                modifier = Modifier
-                    .padding(start = 2.dp)
-                    .clickable { onTermsChange(!viewState.isTermsAccepted) }
-            )
-        }
-
         Spacer(modifier = Modifier.height(20.dp))
 
-        // 9. Tombol Lebar Penuh "Buat akun"
+        // 8. Tombol Lebar Penuh "Buat akun"
         PantrickButton(
             text = stringResource(R.string.signup_button),
             onClick = onCreateAccountClick,
@@ -417,7 +359,6 @@ fun SignUpScreenPreview() {
             onPasswordVisibilityToggle = {},
             onRepeatPasswordChange = {},
             onRepeatPasswordVisibilityToggle = {},
-            onTermsChange = {},
             onCreateAccountClick = {},
             onLoginClick = {}
         )

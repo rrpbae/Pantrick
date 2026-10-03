@@ -27,23 +27,21 @@ import com.example.pantrick.core.ui.theme.PantrickTheme
 import com.example.pantrick.data.model.StorageLocation
 import com.example.pantrick.util.PantrickConstants
 
-// [Materi: Stateless Composable] Baris tab dengan 3 lokasi: Kulkas, Freezer, dan Rak Kering
+// [Materi: Stateless Composable] Baris tab dengan 2 lokasi: Kulkas dan Freezer
 @Composable
 fun LocationTabRow(
     selectedLocation: StorageLocation,
     kulkasCount: Int,
     freezerCount: Int,
-    rakKeringCount: Int,
     onLocationSelected: (StorageLocation) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val locations = listOf(
         StorageLocation.KULKAS to kulkasCount,
-        StorageLocation.FREEZER to freezerCount,
-        StorageLocation.RAK_KERING to rakKeringCount
+        StorageLocation.FREEZER to freezerCount
     )
 
-    // [Materi: Custom Segmented Container] Wadah rounded untuk ketiga tab lokasi
+    // [Materi: Custom Segmented Container] Wadah rounded untuk kedua tab lokasi
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -58,7 +56,6 @@ fun LocationTabRow(
             val label = when (location) {
                 StorageLocation.KULKAS -> stringResource(R.string.loc_fridge)
                 StorageLocation.FREEZER -> stringResource(R.string.loc_freezer)
-                StorageLocation.RAK_KERING -> stringResource(R.string.loc_rak_kering)
             }
 
             // [Materi: Tab Pill Item] Pill aktif berlatar Forest Green dengan teks tebal putih
@@ -93,7 +90,6 @@ fun LocationTabRowLightPreview() {
             selectedLocation = StorageLocation.KULKAS,
             kulkasCount = 5,
             freezerCount = 2,
-            rakKeringCount = 0,
             onLocationSelected = {}
         )
     }
@@ -108,7 +104,6 @@ fun LocationTabRowDarkPreview() {
             selectedLocation = StorageLocation.FREEZER,
             kulkasCount = 5,
             freezerCount = 2,
-            rakKeringCount = 1,
             onLocationSelected = {}
         )
     }

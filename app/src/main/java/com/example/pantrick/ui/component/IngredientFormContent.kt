@@ -79,6 +79,8 @@ fun IngredientFormContent(
     onQuantityChange: (String) -> Unit,
     isQuantityError: Boolean,
     formattedExpiryDate: String,
+    isExpiryEstimated: Boolean = true,
+    onResetToEstimated: () -> Unit = {},
     onSelectDateClick: () -> Unit,
     isFormValid: Boolean,
     isSaving: Boolean,
@@ -341,6 +343,39 @@ fun IngredientFormContent(
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        if (isExpiryEstimated) {
+            Text(
+                text = "Perkiraan otomatis, ketuk untuk ubah tanggal",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Sesuai tanggal yang kamu pilih",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Pakai perkiraan",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ColorForestGreen,
+                    modifier = Modifier
+                        .clickable { onResetToEstimated() }
+                        .padding(vertical = 4.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

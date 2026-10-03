@@ -83,6 +83,7 @@ fun EditIngredientScreen(
     var isQuantityTouched by rememberSaveable { mutableStateOf(false) }
 
     var expiryEpochDay by rememberSaveable(existingItem.id) { mutableStateOf<Long?>(existingItem.expiryEpochDay) }
+    var isManualExpiry by rememberSaveable(existingItem.id) { mutableStateOf(!existingItem.isExpiryEstimated) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
     var isSaving by rememberSaveable { mutableStateOf(false) }
@@ -101,7 +102,8 @@ fun EditIngredientScreen(
             category != existingItem.category ||
             location != existingItem.location ||
             quantity != existingItem.quantityLabel ||
-            expiryEpochDay != existingItem.expiryEpochDay
+            expiryEpochDay != existingItem.expiryEpochDay ||
+            isManualExpiry != !existingItem.isExpiryEstimated
 
     BackHandler(enabled = formDirty) {
         showDiscardDialog = true
@@ -152,7 +154,7 @@ fun EditIngredientScreen(
     // DatePickerDialog Material 3
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = expiryEpochDay?.let {
-            LocalDate.ofEpochDay(it).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            LocalDate.ofEpochDay(it).atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
         } ?: System.currentTimeMillis()
     )
 
@@ -164,9 +166,10 @@ fun EditIngredientScreen(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
                             val selectedLocalDate = Instant.ofEpochMilli(millis)
-                                .atZone(ZoneId.systemDefault())
+                                .atZone(ZoneId.of("UTC"))
                                 .toLocalDate()
                             expiryEpochDay = selectedLocalDate.toEpochDay()
+                            isManualExpiry = true
                         }
                         showDatePicker = false
                     }
@@ -207,9 +210,19 @@ fun EditIngredientScreen(
             },
             isNameError = isNameTouched && !isNameValid,
             category = category,
-            onCategoryChange = { category = it },
+            onCategoryChange = { newCat ->
+                category = newCat
+                if (!isManualExpiry) {
+                    expiryEpochDay = com.example.pantrick.util.ExpiryEstimator.estimateExpiryDate(newCat, location, name).toEpochDay()
+                }
+            },
             location = location,
-            onLocationChange = { location = it },
+            onLocationChange = { newLoc ->
+                location = newLoc
+                if (!isManualExpiry) {
+                    expiryEpochDay = com.example.pantrick.util.ExpiryEstimator.estimateExpiryDate(category, newLoc, name).toEpochDay()
+                }
+            },
             quantity = quantity,
             onQuantityChange = {
                 quantity = it
@@ -217,6 +230,11 @@ fun EditIngredientScreen(
             },
             isQuantityError = isQuantityTouched && !isQuantityValid,
             formattedExpiryDate = formattedExpiryDate,
+            isExpiryEstimated = !isManualExpiry,
+            onResetToEstimated = {
+                isManualExpiry = false
+                expiryEpochDay = com.example.pantrick.util.ExpiryEstimator.estimateExpiryDate(category, location, name).toEpochDay()
+            },
             onSelectDateClick = { showDatePicker = true },
             isFormValid = isFormValid,
             isSaving = isSaving,
@@ -231,7 +249,8 @@ fun EditIngredientScreen(
                             location = location,
                             quantityLabel = quantity.trim(),
                             expiryEpochDay = expiryEpochDay ?: existingItem.expiryEpochDay,
-                            category = category
+                            category = category,
+                            isExpiryEstimated = !isManualExpiry
                         )
                         pantryViewModel.updateItem(email, updatedItem)
                         snackbarHostState.showSnackbar(updateSuccessMsg)

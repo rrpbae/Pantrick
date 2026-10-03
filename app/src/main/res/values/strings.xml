@@ -150,7 +150,7 @@
     <string name="banner_subtitle_multiple">%1$s perlu segera diolah.</string>
     <string name="banner_subtitle_extra">%1$s dan %2$d bahan lainnya perlu segera diolah.</string>
     <string name="btn_plan_cooking">Rencanakan Masak</string>
-    <string name="btn_add_to_location">+ Tambah Bahan ke %1$s</string>
+    <string name="btn_add_to_location">Tambah Bahan</string>
     <string name="btn_add_first_ingredient">+ Tambah Bahan Pertama</string>
     <string name="empty_location_title">%1$s masih kosong</string>
     <string name="empty_location_desc">Belum ada bahan makanan yang disimpan di %1$s.</string>

@@ -36,6 +36,9 @@ data class RecipeDetailRoute(val recipeId: String)
 @Serializable
 data object ProfileRoute
 
+@Serializable
+data object NotificationRoute
+
 // Kompatibilitas dengan Screen interface sebelumnya (jika ada kode lama)
 sealed interface Screen {
     @Serializable

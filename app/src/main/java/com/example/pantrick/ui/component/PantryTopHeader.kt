@@ -81,7 +81,7 @@ fun PantryTopHeader(
                 color = ColorDarkChocolate
             )
             Text(
-                text = "Kulkas, Freezer & Rak Kering",
+                text = "Kulkas & Freezer",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
