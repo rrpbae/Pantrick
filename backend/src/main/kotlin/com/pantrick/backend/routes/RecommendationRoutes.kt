@@ -4,9 +4,12 @@ import com.pantrick.backend.models.ErrorResponse
 import com.pantrick.backend.models.FilterOptionsResponse
 import com.pantrick.backend.models.InstantDinnerResponse
 import com.pantrick.backend.models.RecommendationResponse
+import com.pantrick.backend.models.IngredientSearchRequest
+import com.pantrick.backend.models.IngredientSearchResponse
 import com.pantrick.backend.service.RecommendationService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
@@ -18,6 +21,52 @@ import io.ktor.server.routing.route
  */
 fun Route.recommendationRoutes(recommendationService: RecommendationService) {
     route("/api/recipes") {
+
+        // POST /api/recipes/search-by-ingredients (tanpa autentikasi)
+        // Body JSON: {"ingredients": ["chicken", "onion", "garlic"]}
+        post("/search-by-ingredients") {
+            val request = try {
+                call.receive<IngredientSearchRequest>()
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse(success = false, message = "Format request tidak valid. Kirim JSON: {\"ingredients\":[\"chicken\"]}")
+                )
+                return@post
+            }
+
+            if (request.ingredients.isEmpty()) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse(success = false, message = "Daftar bahan tidak boleh kosong.")
+                )
+                return@post
+            }
+
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
+            val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
+
+            val recommendations = recommendationService.getRecommendationsByIngredientNames(
+                ingredientNames = request.ingredients,
+                limit = limit,
+                offset = offset
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                IngredientSearchResponse(
+                    success = true,
+                    message = if (recommendations.isEmpty())
+                        "Tidak ditemukan resep yang cocok dengan bahan tersebut."
+                    else
+                        "Ditemukan ${recommendations.size} rekomendasi resep.",
+                    total = recommendations.size,
+                    limit = limit,
+                    offset = offset,
+                    recommendations = recommendations
+                )
+            )
+        }
 
         // GET /api/recipes/recommended/filters
         get("/recommended/filters") {

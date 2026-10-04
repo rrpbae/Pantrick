@@ -238,6 +238,48 @@ class RecommendationService(
         )
     }
 
+    /**
+     * Menghasilkan rekomendasi berdasarkan daftar nama bahan yang dikirim langsung (tidak memerlukan pantry user).
+     * Digunakan oleh endpoint search-by-ingredients tanpa autentikasi.
+     */
+    fun getRecommendationsByIngredientNames(
+        ingredientNames: List<String>,
+        limit: Int = 10,
+        offset: Int = 0
+    ): List<RecipeRecommendation> {
+        if (ingredientNames.isEmpty()) return emptyList()
+
+        val safeLimit = limit.coerceIn(1, 100)
+        val safeOffset = offset.coerceAtLeast(0)
+
+        val normNames: Set<String> = ingredientNames
+            .map { IngredientParser.normalizeIngredientName(it) }
+            .filter { it.isNotBlank() }
+            .toSet()
+
+        if (normNames.isEmpty()) return emptyList()
+
+        val allRecipes = recipeRepository.getAllRecipes(limit = Int.MAX_VALUE, offset = 0)
+        val results = mutableListOf<RecipeRecommendation>()
+
+        for (recipe in allRecipes) {
+            if (recipe.ingredients.isEmpty()) continue
+            val rec = matchRecipeAgainstPantry(recipe, normNames)
+            if (rec.matchedCount > 0) {
+                results.add(rec)
+            }
+        }
+
+        return results
+            .sortedWith(
+                compareByDescending<RecipeRecommendation> { it.score }
+                    .thenByDescending { it.matchedCount }
+                    .thenBy { it.recipe.title }
+            )
+            .drop(safeOffset)
+            .take(safeLimit)
+    }
+
     private fun Int.ifZero(default: Int): Int = if (this == 0) default else this
 
     private fun Double.roundTo(decimals: Int): Double {

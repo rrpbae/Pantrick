@@ -35,3 +35,24 @@ data class RecommendationResponse(
     val recommendations: List<RecipeRecommendation> = emptyList(),
     val data: List<RecipeRecommendation> = recommendations
 )
+
+/**
+ * Request body untuk POST /api/recipes/search-by-ingredients (tanpa autentikasi).
+ */
+@Serializable
+data class IngredientSearchRequest(
+    val ingredients: List<String> = emptyList()
+)
+
+/**
+ * Response untuk POST /api/recipes/search-by-ingredients.
+ */
+@Serializable
+data class IngredientSearchResponse(
+    val success: Boolean,
+    val message: String,
+    val total: Int,
+    val limit: Int = 10,
+    val offset: Int = 0,
+    val recommendations: List<RecipeRecommendation> = emptyList()
+)

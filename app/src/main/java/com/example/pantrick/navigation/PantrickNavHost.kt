@@ -216,8 +216,6 @@ fun PantrickNavHost(
                 AddIngredientScreen(
                     currentUser = currentUser,
                     pantryViewModel = pantryViewModel,
-                    savedRecipes = savedRecipes,
-                    onToggleSaveRecipe = { recipeViewModel.toggleSaveRecipe(it) },
                     photoPath = photoPath,
                     onNavigateBack = { navController.popBackStack() },
                     onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },

@@ -1,4 +1,4 @@
-// [Materi: Recipe Matcher & Ingredient Selector] Layar pemilih bahan untuk racik rekomendasi resep instan (Tombol + di tengah)
+// [Materi: Recipe Matcher & Ingredient Selector] Layar pemilih bahan untuk rekomendasi resep dari backend dataset (Tombol + di tengah)
 package com.example.pantrick.ui.screen
 
 import androidx.compose.foundation.BorderStroke
@@ -19,59 +19,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.pantrick.core.network.PantrickApiConfig
 import com.example.pantrick.core.ui.theme.*
-import com.example.pantrick.data.model.Recipe
-import com.example.pantrick.data.model.RecipeCatalog
+import com.example.pantrick.data.model.BackendRecommendation
 import com.example.pantrick.data.model.User
 import com.example.pantrick.ui.component.HomeHeader
+import com.example.pantrick.ui.viewmodel.IngredientSearchViewModel
+import com.example.pantrick.ui.viewmodel.SearchUiState
 import com.example.pantrick.ui.viewmodel.PantryViewModel
-import java.util.Locale
-
-// [Materi: Recipe Matching Helper] Fungsi pemanggilan pencocokan resep yang terpusat agar mudah diganti jika dataset diperbarui kelak
-fun findMatchingRecipes(selected: Set<String>): List<Recipe> {
-    if (selected.isEmpty()) return emptyList()
-
-    return RecipeCatalog.recipes.mapNotNull { template ->
-        val readyKeywords = template.ingredientKeywords.filter { keyword ->
-            selected.any { sel -> sel.contains(keyword, ignoreCase = true) || keyword.contains(sel, ignoreCase = true) }
-        }
-        val missingKeywords = template.ingredientKeywords.filterNot { keyword ->
-            selected.any { sel -> sel.contains(keyword, ignoreCase = true) || keyword.contains(sel, ignoreCase = true) }
-        }
-        val matchPercent = if (template.ingredientKeywords.isNotEmpty()) {
-            (readyKeywords.size * 100) / template.ingredientKeywords.size
-        } else 0
-
-        if (matchPercent > 0) {
-            val missingText = if (missingKeywords.isNotEmpty()) {
-                "${missingKeywords.size} bahan kurang"
-            } else {
-                "0 bahan kurang (Lengkap)"
-            }
-
-            Recipe(
-                id = template.id,
-                title = template.title,
-                description = template.description,
-                durationMinutes = template.durationMinutes,
-                servings = template.servings,
-                matchPercent = matchPercent,
-                usesLabel = "Menggunakan ${readyKeywords.joinToString { kw -> kw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() } }}",
-                readyCount = readyKeywords.size,
-                totalCount = template.ingredientKeywords.size,
-                missingIngredient = missingText,
-                imageRes = template.imageRes
-            )
-        } else null
-    }.sortedByDescending { it.matchPercent }
-}
 
 @Composable
 fun AddIngredientScreen(
     currentUser: User?,
     pantryViewModel: PantryViewModel? = null,
-    savedRecipes: List<Recipe> = emptyList(),
-    onToggleSaveRecipe: (Recipe) -> Unit = {},
+    savedRecipes: List<com.example.pantrick.data.model.Recipe> = emptyList(),
+    onToggleSaveRecipe: (com.example.pantrick.data.model.Recipe) -> Unit = {},
     photoPath: String? = null,
     onNavigateBack: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
@@ -80,33 +44,33 @@ fun AddIngredientScreen(
     contentPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier
 ) {
+    val searchViewModel: IngredientSearchViewModel = viewModel()
+    val searchState by searchViewModel.searchState.collectAsState()
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedIngredients by remember { mutableStateOf(setOf<String>()) }
-    var matchedRecipes by remember { mutableStateOf<List<Recipe>?>(null) }
-    var hasSearched by remember { mutableStateOf(false) }
+
+    // Reset state ketika meninggalkan layar
+    DisposableEffect(Unit) {
+        onDispose { searchViewModel.resetSearch() }
+    }
 
     val userNameSafe = currentUser?.fullName ?: "Pengguna"
 
-    // [Materi: Static Ingredient Catalog] Sumber daftar saran bahan yang diambil dari kata kunci RecipeCatalog
-    val availableIngredients = remember {
-        RecipeCatalog.recipes
-            .flatMap { it.ingredientKeywords }
-            .distinct()
-            .map { keyword ->
-                keyword.replaceFirstChar {
-                    if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
-                }
-            }
-            .sorted()
+    // Saran bahan populer (Bahasa Inggris, sesuai dataset) untuk mempermudah input
+    val popularSuggestions = remember {
+        listOf(
+            "Chicken", "Beef", "Egg", "Onion", "Garlic", "Tomato", "Potato",
+            "Rice", "Pasta", "Butter", "Milk", "Cheese", "Flour", "Sugar",
+            "Salt", "Oil", "Carrot", "Spinach", "Mushroom", "Shrimp"
+        ).sorted()
     }
 
     val filteredSuggestions = remember(searchQuery, selectedIngredients) {
-        if (searchQuery.isBlank()) {
-            emptyList()
-        } else {
-            availableIngredients.filter {
-                it.contains(searchQuery.trim(), ignoreCase = true) && !selectedIngredients.contains(it)
-            }
+        if (searchQuery.isBlank()) emptyList()
+        else popularSuggestions.filter {
+            it.contains(searchQuery.trim(), ignoreCase = true) &&
+                    !selectedIngredients.any { sel -> sel.equals(it, ignoreCase = true) }
         }
     }
 
@@ -117,7 +81,7 @@ fun AddIngredientScreen(
             .padding(contentPadding),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // 1. TOP APP BAR & HEADER (Logo di pojok kiri, tidak ada tombol back, notifikasi & profil di kanan)
+        // 1. TOP APP BAR & HEADER
         item {
             HomeHeader(
                 userName = userNameSafe,
@@ -145,23 +109,19 @@ fun AddIngredientScreen(
                 )
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // KOTAK PENCARIAN BAHAN DENGAN SARAN
+                // KOTAK PENCARIAN BAHAN
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     placeholder = {
                         Text(
-                            "Ketik nama bahan (mis. Ayam, Bawang, Telur)...",
+                            "Ketik nama bahan (mis. Chicken, Onion, Cheese)...",
                             fontSize = 13.sp,
                             color = ColorPlaceholder
                         )
                     },
                     leadingIcon = {
-                        Icon(
-                            Icons.Rounded.Search,
-                            contentDescription = null,
-                            tint = ColorTextSubtitleBrown
-                        )
+                        Icon(Icons.Rounded.Search, contentDescription = null, tint = ColorTextSubtitleBrown)
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
@@ -188,13 +148,11 @@ fun AddIngredientScreen(
                         .height(52.dp)
                 )
 
-                // DAFTAR SARAN BAHAN YANG COCOK
+                // DAFTAR SARAN BAHAN
                 if (searchQuery.isNotBlank()) {
                     if (filteredSuggestions.isNotEmpty()) {
                         Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
                             elevation = CardDefaults.cardElevation(2.dp)
@@ -226,15 +184,67 @@ fun AddIngredientScreen(
                                         )
                                     }
                                 }
+                                // Opsi: tambah teks input langsung walau tidak ada di saran
+                                if (!filteredSuggestions.any { it.equals(searchQuery.trim(), ignoreCase = true) } && searchQuery.trim().length >= 2) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                selectedIngredients = selectedIngredients + searchQuery.trim()
+                                                searchQuery = ""
+                                            }
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Add,
+                                            contentDescription = null,
+                                            tint = ColorTextSubtitleBrown,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(
+                                            text = "Tambah \"${searchQuery.trim()}\"",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = ColorTextSubtitleBrown
+                                        )
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        Text(
-                            text = "Bahan '$searchQuery' tidak ditemukan dalam daftar saran.",
-                            fontSize = 12.sp,
-                            color = ColorTextSubtitleBrown,
-                            modifier = Modifier.padding(top = 6.dp, start = 4.dp)
-                        )
+                    } else if (searchQuery.trim().length >= 2) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedIngredients = selectedIngredients + searchQuery.trim()
+                                        searchQuery = ""
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Add,
+                                    contentDescription = null,
+                                    tint = ColorForestGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Tambah \"${searchQuery.trim()}\"",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = ColorDarkChocolate
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -259,12 +269,7 @@ fun AddIngredientScreen(
                                 border = BorderStroke(1.dp, ColorForestGreen.copy(alpha = 0.5f))
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(
-                                        start = 12.dp,
-                                        end = 6.dp,
-                                        top = 4.dp,
-                                        bottom = 4.dp
-                                    ),
+                                    modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
@@ -275,9 +280,7 @@ fun AddIngredientScreen(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     IconButton(
-                                        onClick = {
-                                            selectedIngredients = selectedIngredients - ingredient
-                                        },
+                                        onClick = { selectedIngredients = selectedIngredients - ingredient },
                                         modifier = Modifier.size(20.dp)
                                     ) {
                                         Icon(
@@ -295,90 +298,164 @@ fun AddIngredientScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // TOMBOL CARI RESEP (Aktif jika minimal 1 bahan dipilih)
+                // TOMBOL CARI RESEP
                 Button(
                     onClick = {
-                        hasSearched = true
-                        matchedRecipes = findMatchingRecipes(selectedIngredients)
+                        searchViewModel.searchRecommendations(selectedIngredients)
                     },
-                    enabled = selectedIngredients.isNotEmpty(),
+                    enabled = selectedIngredients.isNotEmpty() && searchState !is SearchUiState.Loading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ColorForestGreen,
                         disabledContainerColor = ColorDarkChocolate.copy(alpha = 0.3f)
                     ),
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = ColorSurfaceWhite,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Cari Resep",
-                        color = ColorSurfaceWhite,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (searchState is SearchUiState.Loading) {
+                        CircularProgressIndicator(
+                            color = ColorSurfaceWhite,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Mencari resep...",
+                            color = ColorSurfaceWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = ColorSurfaceWhite,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Cari Resep",
+                            color = ColorSurfaceWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
 
-        // 3. BAGIAN HASIL KECOCOKAN RESEP
-        if (hasSearched) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                    Text(
-                        text = "Rekomendasi Resep",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = ColorDarkChocolate
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+        // 3. BAGIAN HASIL REKOMENDASI DARI BACKEND
+        when (val state = searchState) {
+            is SearchUiState.Idle -> { /* Belum ada pencarian */ }
 
-                    val recipes = matchedRecipes
-                    if (recipes.isNullOrEmpty()) {
+            is SearchUiState.Loading -> {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = ColorForestGreen)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Mencari resep dari dataset...",
+                                fontSize = 13.sp,
+                                color = ColorTextSubtitleBrown,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
+            is SearchUiState.Error -> {
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        Text(
+                            text = "Rekomendasi Resep",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = ColorDarkChocolate
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp),
-                                contentAlignment = Alignment.Center
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                Icon(
+                                    Icons.Rounded.WifiOff,
+                                    contentDescription = null,
+                                    tint = ColorUrgencyRed,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Tidak ada resep yang cocok dengan bahan yang kamu pilih.",
+                                    text = state.message,
                                     fontSize = 13.sp,
                                     color = ColorTextSubtitleBrown,
                                     textAlign = TextAlign.Center
                                 )
                             }
                         }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            recipes.forEach { recipe ->
-                                val isSaved = savedRecipes.any { it.id == recipe.id }
-                                RecipeMatchCard(
-                                    title = recipe.title,
-                                    subtitle = recipe.usesLabel,
-                                    matchPercentage = "${recipe.matchPercent}% Cocok",
-                                    missingInfo = recipe.missingIngredient,
-                                    timeText = "${recipe.durationMinutes} mnt",
-                                    calorieText = "${recipe.servings} porsi",
-                                    matchColor = if (recipe.matchPercent >= 70) ColorForestGreen else ColorWarmPeach,
-                                    isFavorite = isSaved,
-                                    onFavoriteToggle = { onToggleSaveRecipe(recipe) },
-                                    onCookNowClick = { onNavigateToRecipeDetail(recipe.id) }
+                    }
+                }
+            }
+
+            is SearchUiState.Success -> {
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        Text(
+                            text = "Rekomendasi Resep",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = ColorDarkChocolate
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (state.recommendations.isNotEmpty()) {
+                            Text(
+                                text = "${state.recommendations.size} resep ditemukan dari dataset",
+                                fontSize = 11.sp,
+                                color = ColorTextSubtitleBrown
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                if (state.recommendations.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Tidak ditemukan resep yang cocok dengan bahan tersebut.\nCoba ganti nama bahan ke Bahasa Inggris (mis. Chicken, Onion, Garlic).",
+                                    fontSize = 13.sp,
+                                    color = ColorTextSubtitleBrown,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 18.sp
                                 )
                             }
                         }
+                    }
+                } else {
+                    items(state.recommendations.size, key = { state.recommendations[it].recipe.id }) { index ->
+                        val rec = state.recommendations[index]
+                        BackendRecipeMatchCard(
+                            recommendation = rec,
+                            onCookNowClick = { onNavigateToRecipeDetail(rec.recipe.id) },
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
                 }
             }
@@ -386,23 +463,25 @@ fun AddIngredientScreen(
     }
 }
 
+/**
+ * Kartu hasil rekomendasi resep dari backend dataset.
+ * Menampilkan data aktual: title, match%, bahan cocok, bahan kurang, dan gambar dari dataset.
+ */
 @Composable
-fun RecipeMatchCard(
-    title: String,
-    subtitle: String,
-    matchPercentage: String,
-    missingInfo: String,
-    timeText: String,
-    calorieText: String,
-    matchColor: Color,
-    isFavorite: Boolean = false,
-    onFavoriteToggle: () -> Unit = {},
-    isAltButton: Boolean = false,
-    isQuickBlend: Boolean = false,
-    onCookNowClick: () -> Unit
+fun BackendRecipeMatchCard(
+    recommendation: BackendRecommendation,
+    onCookNowClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val recipe = recommendation.recipe
+    val matchPct = recommendation.matchPercentage.toInt()
+    val matchColor = if (matchPct >= 70) ColorForestGreen else ColorWarmPeach
+    val imageUrl = if (recipe.hasImage && recipe.imageName != null) {
+        "${PantrickApiConfig.BASE_URL}/api/recipes/${recipe.imageName}/image"
+    } else null
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -417,6 +496,7 @@ fun RecipeMatchCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
+                    // Gambar resep dari backend (atau placeholder jika tidak ada)
                     Box(
                         modifier = Modifier
                             .size(54.dp)
@@ -424,35 +504,32 @@ fun RecipeMatchCard(
                             .background(ColorWarmPeach),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.Restaurant, contentDescription = null, tint = ColorDarkChocolate)
+                        if (imageUrl != null) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = recipe.title,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                                error = null,
+                                placeholder = null
+                            )
+                        } else {
+                            Icon(Icons.Rounded.Restaurant, contentDescription = null, tint = ColorDarkChocolate)
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = title,
+                            text = recipe.title,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             color = ColorDarkChocolate
                         )
                         Text(
-                            text = subtitle,
+                            text = "Menggunakan ${recommendation.matchedIngredients.take(2).joinToString(", ")}${if (recommendation.matchedIngredients.size > 2) "..." else ""}",
                             fontSize = 11.sp,
                             color = ColorTextSubtitleBrown
                         )
                     }
-                }
-
-                // Tombol Simpan Resep (Ikon Hati)
-                IconButton(
-                    onClick = onFavoriteToggle,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Batal simpan resep" else "Simpan resep",
-                        tint = if (isFavorite) ColorUrgencyRed else ColorTextSubtitleBrown,
-                        modifier = Modifier.size(22.dp)
-                    )
                 }
             }
 
@@ -468,18 +545,22 @@ fun RecipeMatchCard(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = matchPercentage,
+                        text = "$matchPct% Cocok",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (matchColor == ColorForestGreen) ColorForestGreen else ColorDarkChocolate,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
+                val missingText = when {
+                    recommendation.missingIngredientCount == 0 -> "Semua bahan ada!"
+                    else -> "${recommendation.missingIngredientCount} bahan kurang"
+                }
                 Text(
-                    text = missingInfo,
+                    text = missingText,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = ColorTextSubtitleBrown
+                    color = if (recommendation.missingIngredientCount == 0) ColorForestGreen else ColorTextSubtitleBrown
                 )
             }
 
@@ -493,39 +574,37 @@ fun RecipeMatchCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Rounded.Schedule,
-                            contentDescription = null,
-                            tint = ColorTextSubtitleBrown,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(timeText, fontSize = 11.sp, color = ColorTextSubtitleBrown)
+                    if (recipe.cookingTimeMinutes != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.Schedule, contentDescription = null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("${recipe.cookingTimeMinutes} mnt", fontSize = 11.sp, color = ColorTextSubtitleBrown)
+                        }
                     }
+                    if (recipe.servings != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.People, contentDescription = null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("${recipe.servings} porsi", fontSize = 11.sp, color = ColorTextSubtitleBrown)
+                        }
+                    }
+                    // Tampilkan jumlah total bahan
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Rounded.People,
-                            contentDescription = null,
-                            tint = ColorTextSubtitleBrown,
-                            modifier = Modifier.size(14.dp)
-                        )
+                        Icon(Icons.Rounded.Restaurant, contentDescription = null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(calorieText, fontSize = 11.sp, color = ColorTextSubtitleBrown)
+                        Text("${recommendation.matchedCount}/${recommendation.totalIngredients} bahan", fontSize = 11.sp, color = ColorTextSubtitleBrown)
                     }
                 }
 
                 Button(
                     onClick = onCookNowClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isQuickBlend) ColorWarmPeach else if (isAltButton) ColorWarmPeach else ColorForestGreen
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorForestGreen),
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                     modifier = Modifier.height(36.dp)
                 ) {
                     Text(
-                        text = if (isQuickBlend) "⚡ Blender Cepat" else if (isAltButton) "Lihat Resep" else "Masak Sekarang →",
+                        text = "Masak Sekarang →",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = ColorSurfaceWhite
