@@ -1,10 +1,10 @@
 package com.example.pantrick.ui.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,16 +16,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pantrick.R
 import com.example.pantrick.core.ui.theme.*
+import com.example.pantrick.data.model.Recipe
 import com.example.pantrick.data.model.User
 import com.example.pantrick.ui.component.HomeHeader
 
 @Composable
 fun RecipesScreen(
     currentUser: User? = null,
+    savedRecipes: List<Recipe> = emptyList(),
+    onToggleSaveRecipe: (Recipe) -> Unit = {},
     photoPath: String? = null,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
@@ -33,6 +40,16 @@ fun RecipesScreen(
     onNavigateToDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredRecipes = remember(savedRecipes, searchQuery) {
+        if (searchQuery.isBlank()) {
+            savedRecipes
+        } else {
+            savedRecipes.filter { it.title.contains(searchQuery.trim(), ignoreCase = true) }
+        }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -50,15 +67,20 @@ fun RecipesScreen(
             )
         }
 
-        // 2. SEARCH BAR
+        // 2. SEARCH BAR (Tanpa mikrofon, berfungsi memfilter resep tersimpan berdasarkan nama)
         item {
-            var searchQuery by remember { mutableStateOf("") }
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Cari resep berdasarkan bahan...", color = ColorPlaceholder, fontSize = 14.sp) },
+                placeholder = { Text("Cari resep tersimpan...", color = ColorPlaceholder, fontSize = 14.sp) },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = ColorDarkChocolate) },
-                trailingIcon = { Icon(Icons.Rounded.Mic, contentDescription = null, tint = ColorForestGreen) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Hapus pencarian", tint = ColorTextSubtitleBrown)
+                        }
+                    }
+                },
                 colors = TextFieldDefaults.colors(
                     unfocusedContainerColor = ColorSurfaceWhite,
                     focusedContainerColor = ColorSurfaceWhite,
@@ -74,21 +96,7 @@ fun RecipesScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // 3. FILTER CHIPS
-        item {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item { FilterChipItem(text = "Semua", icon = Icons.Rounded.Check, isSelected = true) }
-                item { FilterChipItem(text = "100% Siap", icon = Icons.Rounded.Eco, isSelected = false) }
-                item { FilterChipItem(text = "< 20m Cepat", icon = Icons.Rounded.Timer, isSelected = false) }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        // 4. SMART MEAL GENERATOR
+        // 3. KOLEKSI RESEPMU (Card ringkasan resep tersimpan dinamis)
         item {
             Card(
                 modifier = Modifier
@@ -99,19 +107,32 @@ fun RecipesScreen(
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = ColorDarkChocolate, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("PEMBUAT MENU PINTAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorDarkChocolate, letterSpacing = 0.5.sp)
-                        }
-                        Surface(color = ColorSurfaceWhite.copy(alpha = 0.6f), shape = RoundedCornerShape(8.dp)) {
-                            Text("Diperbarui 10m lalu", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ColorDarkChocolate, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = ColorDarkChocolate,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "KOLEKSI RESEPMU",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ColorDarkChocolate,
+                            letterSpacing = 0.5.sp
+                        )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Kamu bisa memasak 4 resep dengan 0 bahan kurang hari ini!",
+                        text = if (savedRecipes.isNotEmpty()) {
+                            "Kamu punya ${savedRecipes.size} resep tersimpan."
+                        } else {
+                            "Belum ada resep tersimpan."
+                        },
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = ColorDarkChocolate,
@@ -119,154 +140,92 @@ fun RecipesScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Berdasarkan bahan segar di kulkas & stok dapurmu.",
+                        text = if (savedRecipes.isNotEmpty()) {
+                            "Pilih salah satu untuk mulai memasak."
+                        } else {
+                            "Cari resep lewat tombol + di tengah, lalu simpan dengan ikon hati."
+                        },
                         fontSize = 12.sp,
                         color = ColorTextSubtitleBrown
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { /* TODO */ },
-                            colors = ButtonDefaults.buttonColors(containerColor = ColorDarkChocolate),
-                            shape = RoundedCornerShape(16.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Icon(Icons.Rounded.RoomService, contentDescription = null, tint = ColorSurfaceWhite, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Buat Makan Malam Instan", color = ColorSurfaceWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                        IconButton(
-                            onClick = { /* TODO */ },
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(ColorSurfaceWhite.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        ) {
-                            Icon(Icons.Rounded.Tune, contentDescription = "Pengaturan", tint = ColorDarkChocolate, modifier = Modifier.size(18.dp))
-                        }
-                    }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 5. RECIPES LIST HEADER
+        // 4. RECIPES LIST HEADER ("Resep Tersimpan" tanpa subteks dan tanpa tombol "Urutkan")
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Column {
-                    Text("Resep Sesuai Bahan", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ColorDarkChocolate)
-                    Text("Diurutkan dari bahan di dapurmu", fontSize = 11.sp, color = ColorTextSubtitleBrown)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Urutkan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorForestGreen)
-                    Icon(Icons.Rounded.SwapVert, contentDescription = null, tint = ColorForestGreen, modifier = Modifier.size(16.dp))
+            Text(
+                text = "Resep Tersimpan",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = ColorDarkChocolate,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // 5. RECIPE CARDS (HANYA resep tersimpan pengguna)
+        if (filteredRecipes.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Belum ada resep tersimpan.",
+                        fontSize = 14.sp,
+                        color = ColorTextSubtitleBrown,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+        } else {
+            items(filteredRecipes.size, key = { filteredRecipes[it].id }) { index ->
+                val recipe = filteredRecipes[index]
+                RecipeCard(
+                    recipe = recipe,
+                    onFavoriteClick = { onToggleSaveRecipe(recipe) },
+                    onClick = { onNavigateToDetail(recipe.id) }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
-
-        // 6. RECIPE CARDS (Tanpa tombol simpan/bookmark di pojok kartu)
-        item {
-            RecipeCard(
-                title = "Creamy Garlic Herb Pasta",
-                matchText = "Cocok 90% • 5/6 Bahan",
-                badgeText = "Siap dimasak",
-                time = "25 mnt",
-                cals = "420 kkal",
-                prep = "Persiapan mudah",
-                prepIcon = Icons.Rounded.Restaurant,
-                statusText = "Butuh: Krim kental",
-                statusColor = ColorDarkChocolate,
-                statusDot = ColorUrgencyRed,
-                buttonText = "Lihat Resep >",
-                buttonBgColor = ColorForestGreen,
-                buttonTextColor = ColorSurfaceWhite,
-                onClick = { onNavigateToDetail("RCP-01") }
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
-            RecipeCard(
-                title = "Fresh Spinach & Egg Frittata",
-                matchText = "Cocok 100% • 4/4 Bahan",
-                badgeText = "Tanpa Sisa",
-                badgeBgColor = Color(0xFFE8F2EA),
-                badgeTextColor = ColorForestGreen,
-                time = "15 mnt",
-                cals = "310 kkal",
-                prep = "Siap Sekarang",
-                prepIcon = Icons.Rounded.Bolt,
-                prepColor = ColorForestGreen,
-                statusText = "Semua bahan ada di dapur",
-                statusColor = ColorTextSubtitleBrown,
-                statusDot = ColorForestGreen,
-                buttonText = "Masak Sekarang",
-                buttonIcon = Icons.Rounded.PlayCircleOutline,
-                buttonBgColor = ColorForestGreen,
-                buttonTextColor = ColorSurfaceWhite,
-                onClick = { onNavigateToDetail("RCP-02") }
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
-            RecipeCard(
-                title = "Honey Mustard Glazed Chicken",
-                matchText = "Cocok 75% • 3/4 Bahan",
-                matchBgColor = Color(0xFF7A685F),
-                badgeText = "",
-                time = "35 mnt",
-                cals = "480 kkal",
-                prep = "38g Protein",
-                prepIcon = Icons.Rounded.FitnessCenter,
-                statusText = "Kurang: Mustard Dijon",
-                statusColor = ColorUrgencyRed,
-                statusDot = Color.Transparent,
-                buttonText = "+ Ke Keranjang",
-                buttonBgColor = ColorWarmPeach.copy(alpha = 0.5f),
-                buttonTextColor = ColorDarkChocolate,
-                onClick = { onNavigateToDetail("RCP-03") }
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Bagian "Koleksi Tersimpan" dan "Folder Baru" telah dihapus sesuai permintaan.
     }
 }
 
 @Composable
-fun FilterChipItem(text: String, icon: ImageVector?, isSelected: Boolean) {
-    Surface(
-        color = if (isSelected) ColorForestGreen else ColorSurfaceWhite,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.height(36.dp).clickable { /* TODO */ }
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = if (isSelected) ColorSurfaceWhite else ColorForestGreen,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text(
-                text = text,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isSelected) ColorSurfaceWhite else ColorDarkChocolate
-            )
-        }
-    }
+fun RecipeCard(
+    recipe: Recipe,
+    onFavoriteClick: () -> Unit,
+    onClick: () -> Unit
+) {
+    val isComplete = recipe.readyCount >= recipe.totalCount && recipe.totalCount > 0
+    RecipeCard(
+        title = recipe.title,
+        matchText = if (recipe.totalCount > 0) "${recipe.matchPercent}% Cocok • ${recipe.readyCount}/${recipe.totalCount} Bahan" else "${recipe.matchPercent}% Cocok",
+        matchBgColor = if (recipe.matchPercent >= 70) ColorForestGreen else ColorWarmPeach,
+        badgeText = if (isComplete) "Siap dimasak" else "",
+        badgeBgColor = Color(0xFFE8F2EA),
+        badgeTextColor = ColorForestGreen,
+        time = "${recipe.durationMinutes} mnt",
+        cals = "${recipe.servings} porsi",
+        prep = recipe.usesLabel.ifBlank { "Bahan Dapur" },
+        prepIcon = Icons.Rounded.Restaurant,
+        prepColor = ColorTextSubtitleBrown,
+        statusText = if (isComplete) "Semua bahan ada di dapur" else recipe.missingIngredient,
+        statusColor = if (isComplete) ColorTextSubtitleBrown else ColorUrgencyRed,
+        statusDot = if (isComplete) ColorForestGreen else ColorUrgencyRed,
+        buttonText = "Lihat Resep >",
+        buttonBgColor = ColorForestGreen,
+        buttonTextColor = ColorSurfaceWhite,
+        imageRes = recipe.imageRes,
+        isFavorite = true,
+        onFavoriteClick = onFavoriteClick,
+        onClick = onClick
+    )
 }
 
 @Composable
@@ -289,6 +248,9 @@ fun RecipeCard(
     buttonIcon: ImageVector? = null,
     buttonBgColor: Color,
     buttonTextColor: Color,
+    imageRes: Int = R.drawable.ic_placeholder_pasta,
+    isFavorite: Boolean = true,
+    onFavoriteClick: () -> Unit = {},
     onClick: () -> Unit
 ) {
     Card(
@@ -299,8 +261,19 @@ fun RecipeCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Box(
-                modifier = Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(16.dp)).background(ColorPlaceholder.copy(alpha = 0.3f))
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ColorPlaceholder.copy(alpha = 0.3f))
             ) {
+                Image(
+                    painter = painterResource(id = imageRes),
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
                 Surface(
                     color = matchBgColor.copy(alpha = 0.9f),
                     shape = RoundedCornerShape(percent = 50),
@@ -313,7 +286,24 @@ fun RecipeCard(
                     }
                 }
 
-                // Tombol Bookmark / Simpan di pojok kanan atas telah dihapus sesuai permintaan.
+                // Tombol Batal Simpan (Ikon Hati) di pojok kanan atas kartu
+                Box(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(36.dp)
+                        .align(Alignment.TopEnd)
+                        .clip(CircleShape)
+                        .background(ColorSurfaceWhite.copy(alpha = 0.9f))
+                        .clickable { onFavoriteClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = "Batal simpan resep",
+                        tint = if (isFavorite) ColorUrgencyRed else ColorDarkChocolate,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
 
                 if (badgeText.isNotEmpty()) {
                     Surface(

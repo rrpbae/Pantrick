@@ -50,7 +50,7 @@
     <string name="nav_home">Beranda</string>
     <string name="nav_pantry">Pantry</string>
     <string name="nav_add">Tambah</string>
-    <string name="nav_recipes">Resep</string>
+    <string name="nav_recipes">Resep Tersimpan</string>
     <string name="nav_profile">Profil</string>
 
     <!-- Header & Kartu Sapaan Home -->

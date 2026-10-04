@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.example.pantrick.data.model.PantryItem
+import com.example.pantrick.data.model.Recipe
 import com.example.pantrick.data.model.User
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -34,6 +35,7 @@ class PantrickPreferences(context: Context) {
         private const val KEY_PANTRY_PREFIX = "pantry_"
         private const val KEY_EXPIRY_REMINDER_PREFIX = "expiry_reminder_"
         private const val KEY_PROFILE_IMAGE_PREFIX = "profile_image_"
+        private const val KEY_SAVED_RECIPES_PREFIX = "saved_recipes_"
 
         // [Materi: In-Memory Session] Menyimpan sesi sementara jika "Ingat saya" tidak dicentang
         @Volatile
@@ -155,5 +157,42 @@ class PantrickPreferences(context: Context) {
         } else {
             prefs.edit().putString(key, path).apply()
         }
+    }
+
+    // ==================== PENGELOLAAN RESEP TERSIMPAN PER USER ====================
+
+    fun getSavedRecipes(email: String?): List<Recipe> {
+        if (email.isNullOrBlank()) return emptyList()
+        val normalized = User.normalizeEmail(email)
+        val rawJson = prefs.getString("$KEY_SAVED_RECIPES_PREFIX$normalized", null) ?: return emptyList()
+        return try {
+            json.decodeFromString<List<Recipe>>(rawJson)
+        } catch (e: Exception) {
+            Log.e(TAG, "Gagal mengurai daftar resep tersimpan dari SharedPreferences", e)
+            emptyList()
+        }
+    }
+
+    fun saveRecipe(email: String?, recipe: Recipe) {
+        if (email.isNullOrBlank()) return
+        val normalized = User.normalizeEmail(email)
+        val current = getSavedRecipes(email).filterNot { it.id == recipe.id }.toMutableList()
+        // Tambahkan ke indeks 0 agar resep paling baru disimpan berada di paling atas
+        current.add(0, recipe.copy(savedAtEpochMillis = System.currentTimeMillis()))
+        val rawJson = json.encodeToString(current)
+        prefs.edit().putString("$KEY_SAVED_RECIPES_PREFIX$normalized", rawJson).apply()
+    }
+
+    fun removeSavedRecipe(email: String?, recipeId: String) {
+        if (email.isNullOrBlank()) return
+        val normalized = User.normalizeEmail(email)
+        val current = getSavedRecipes(email).filterNot { it.id == recipeId }
+        val rawJson = json.encodeToString(current)
+        prefs.edit().putString("$KEY_SAVED_RECIPES_PREFIX$normalized", rawJson).apply()
+    }
+
+    fun isRecipeSaved(email: String?, recipeId: String): Boolean {
+        if (email.isNullOrBlank()) return false
+        return getSavedRecipes(email).any { it.id == recipeId }
     }
 }

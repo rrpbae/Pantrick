@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -145,7 +146,8 @@ fun PantrickBottomBar(
                                         text = item.label,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = ColorForestGreen
+                                        color = ColorForestGreen,
+                                        textAlign = TextAlign.Center
                                     )
                                 }
                             } else {
@@ -165,7 +167,8 @@ fun PantrickBottomBar(
                                         text = item.label,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        textAlign = TextAlign.Center
                                     )
                                 }
                             }

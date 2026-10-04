@@ -3,20 +3,23 @@ package com.example.pantrick.data.model
 
 import androidx.annotation.DrawableRes
 import com.example.pantrick.R
+import kotlinx.serialization.Serializable
 
 // [Materi: Model Resep Terhitung] Representasi resep setelah dicocokkan dengan bahan pengguna
+@Serializable
 data class Recipe(
     val id: String,
     val title: String,
-    val description: String,
-    val durationMinutes: Int,
-    val servings: Int,
-    val matchPercent: Int,
-    val usesLabel: String,
-    val readyCount: Int,
-    val totalCount: Int,
-    val missingIngredient: String,
-    @get:DrawableRes val imageRes: Int
+    val description: String = "",
+    val durationMinutes: Int = 0,
+    val servings: Int = 1,
+    val matchPercent: Int = 0,
+    val usesLabel: String = "",
+    val readyCount: Int = 0,
+    val totalCount: Int = 0,
+    val missingIngredient: String = "",
+    @get:DrawableRes val imageRes: Int = R.drawable.ic_placeholder_pasta,
+    val savedAtEpochMillis: Long = 0L
 )
 
 // [Materi: Template Resep Statis] Definisi master resep beserta daftar kata kunci bahan yang dibutuhkan

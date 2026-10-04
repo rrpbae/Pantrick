@@ -46,6 +46,7 @@ import com.example.pantrick.ui.screen.RecipesScreen
 import com.example.pantrick.ui.screen.RecipeDetailScreen
 import com.example.pantrick.ui.viewmodel.AuthViewModel
 import com.example.pantrick.ui.viewmodel.PantryViewModel
+import com.example.pantrick.ui.viewmodel.RecipeViewModel
 
 private const val TAG = "PantrickNav"
 
@@ -54,14 +55,17 @@ fun PantrickNavHost(
     navController: NavHostController = rememberNavController(),
     authViewModel: AuthViewModel = viewModel(),
     pantryViewModel: PantryViewModel = viewModel(),
+    recipeViewModel: RecipeViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     val photoPath by authViewModel.profileImagePath.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
+    val savedRecipes by recipeViewModel.savedRecipes.collectAsState()
 
     LaunchedEffect(currentUser) {
         pantryViewModel.loadItemsForUser(currentUser?.email)
+        recipeViewModel.loadSavedRecipesForUser(currentUser?.email)
     }
 
     val initialDestination = remember {
@@ -161,12 +165,15 @@ fun PantrickNavHost(
                 HomeScreen(
                     currentUser = currentUser,
                     items = pantryItems,
+                    savedRecipes = savedRecipes,
+                    onToggleSaveRecipe = { recipeViewModel.toggleSaveRecipe(it) },
                     photoPath = photoPath,
                     contentPadding = innerPadding,
                     onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     onNavigateToAdd = { navController.navigate(AddPantryItemRoute("KULKAS")) },
-                    onNavigateToPantry = { navController.navigate(PantryRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }
+                    onNavigateToPantry = { navController.navigate(PantryRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    onNavigateToRecipeDetail = { recipeId -> navController.navigate(RecipeDetailRoute(recipeId)) }
                 )
             }
 
@@ -209,6 +216,8 @@ fun PantrickNavHost(
                 AddIngredientScreen(
                     currentUser = currentUser,
                     pantryViewModel = pantryViewModel,
+                    savedRecipes = savedRecipes,
+                    onToggleSaveRecipe = { recipeViewModel.toggleSaveRecipe(it) },
                     photoPath = photoPath,
                     onNavigateBack = { navController.popBackStack() },
                     onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
@@ -243,6 +252,8 @@ fun PantrickNavHost(
             composable<RecipesRoute> {
                 RecipesScreen(
                     currentUser = currentUser,
+                    savedRecipes = savedRecipes,
+                    onToggleSaveRecipe = { recipeViewModel.toggleSaveRecipe(it) },
                     photoPath = photoPath,
                     onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
@@ -257,10 +268,8 @@ fun PantrickNavHost(
                 val detailRoute = backStackEntry.toRoute<RecipeDetailRoute>()
                 RecipeDetailScreen(
                     recipeId = detailRoute.recipeId,
-                    currentUser = currentUser,
-                    photoPath = photoPath,
-                    onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
-                    onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    savedRecipes = savedRecipes,
+                    pantryItems = pantryItems,
                     contentPadding = innerPadding,
                     onNavigateBack = {
                         navController.popBackStack()

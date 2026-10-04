@@ -70,6 +70,8 @@ fun findMatchingRecipes(selected: Set<String>): List<Recipe> {
 fun AddIngredientScreen(
     currentUser: User?,
     pantryViewModel: PantryViewModel? = null,
+    savedRecipes: List<Recipe> = emptyList(),
+    onToggleSaveRecipe: (Recipe) -> Unit = {},
     photoPath: String? = null,
     onNavigateBack: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
@@ -362,6 +364,7 @@ fun AddIngredientScreen(
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             recipes.forEach { recipe ->
+                                val isSaved = savedRecipes.any { it.id == recipe.id }
                                 RecipeMatchCard(
                                     title = recipe.title,
                                     subtitle = recipe.usesLabel,
@@ -370,6 +373,8 @@ fun AddIngredientScreen(
                                     timeText = "${recipe.durationMinutes} mnt",
                                     calorieText = "${recipe.servings} porsi",
                                     matchColor = if (recipe.matchPercent >= 70) ColorForestGreen else ColorWarmPeach,
+                                    isFavorite = isSaved,
+                                    onFavoriteToggle = { onToggleSaveRecipe(recipe) },
                                     onCookNowClick = { onNavigateToRecipeDetail(recipe.id) }
                                 )
                             }
@@ -390,6 +395,8 @@ fun RecipeMatchCard(
     timeText: String,
     calorieText: String,
     matchColor: Color,
+    isFavorite: Boolean = false,
+    onFavoriteToggle: () -> Unit = {},
     isAltButton: Boolean = false,
     isQuickBlend: Boolean = false,
     onCookNowClick: () -> Unit
@@ -406,7 +413,10 @@ fun RecipeMatchCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Box(
                         modifier = Modifier
                             .size(54.dp)
@@ -430,6 +440,19 @@ fun RecipeMatchCard(
                             color = ColorTextSubtitleBrown
                         )
                     }
+                }
+
+                // Tombol Simpan Resep (Ikon Hati)
+                IconButton(
+                    onClick = onFavoriteToggle,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Batal simpan resep" else "Simpan resep",
+                        tint = if (isFavorite) ColorUrgencyRed else ColorTextSubtitleBrown,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 

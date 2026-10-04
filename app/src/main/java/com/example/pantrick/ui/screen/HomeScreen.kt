@@ -70,16 +70,17 @@ private const val TAG = "PantrickHome"
 fun HomeScreen(
     currentUser: User?,
     items: List<PantryItem>,
+    savedRecipes: List<Recipe> = emptyList(),
+    onToggleSaveRecipe: (Recipe) -> Unit = {},
     photoPath: String? = null,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNavigateToAdd: () -> Unit = {},
     onNavigateToPantry: () -> Unit = {},
+    onNavigateToRecipeDetail: (String) -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(0.dp),
     modifier: Modifier = Modifier
 ) {
-    var isFavorite by rememberSaveable { mutableStateOf(false) }
-
     val fullName = currentUser?.fullName.orEmpty().ifBlank { "Pengguna" }
     val firstName = fullName.trim().split("\\s+".toRegex()).firstOrNull()?.ifBlank { "Pengguna" } ?: "Pengguna"
 
@@ -106,6 +107,10 @@ fun HomeScreen(
         RecipeCatalog.findBestMatch(items, RecipeCatalog.MIN_RECIPE_MATCH_PERCENT)
     }
 
+    val isFavorite = remember(matchedRecipe, savedRecipes) {
+        matchedRecipe != null && savedRecipes.any { it.id == matchedRecipe.id }
+    }
+
     var selectedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedItem = remember(selectedItemId, items) { items.find { it.id == selectedItemId } }
 
@@ -127,8 +132,10 @@ fun HomeScreen(
         blurRadius = blurRadius,
         photoPath = photoPath,
         onFavoriteToggle = {
-            isFavorite = !isFavorite
-            Log.d(TAG, "Recipe favorite status toggled: $isFavorite")
+            matchedRecipe?.let { recipe ->
+                onToggleSaveRecipe(recipe)
+                Log.d(TAG, "Recipe favorite status toggled for: ${recipe.title}")
+            }
         },
         onNotificationClick = onNotificationClick,
         onProfileClick = onProfileClick,
@@ -141,7 +148,9 @@ fun HomeScreen(
             selectedItemId = null
         },
         onCookNowClick = {
-            Log.d(TAG, "Cook now clicked for recipe: ${matchedRecipe?.title}")
+            matchedRecipe?.let { recipe ->
+                onNavigateToRecipeDetail(recipe.id)
+            }
         },
         onPlanMealClick = {
             Log.d(TAG, "Plan meal clicked for recipe: ${matchedRecipe?.title}")
