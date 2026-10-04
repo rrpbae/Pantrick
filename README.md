@@ -1,67 +1,82 @@
 # Pantrick
 
-Pantrick adalah aplikasi Android untuk membantu pengguna mengelola bahan makanan di pantry serta menemukan rekomendasi resep berdasarkan bahan yang tersedia.
+Aplikasi Android untuk mengelola bahan makanan di pantry dan menemukan rekomendasi resep berdasarkan bahan yang tersedia.
 
 ## Teknologi
 
-- Android: Kotlin + Android Studio
-- Backend: Kotlin + Ktor 3.0.3
-- Authentication: JWT + BCrypt
-- Recipe Dataset: Food Ingredients and Recipe Dataset with Image Name Mapping
-- Database: In-memory repository
-- Backend Port: `8081`
+- **Android**: Kotlin + Jetpack Compose
+- **Backend**: Kotlin + Ktor 3.0.3
+- **Port**: 8081
 
-> Catatan: backend menggunakan in-memory repository. Data pengguna/pantry dapat kembali kosong ketika backend dihentikan atau dijalankan ulang.
+## Prasyarat
 
-## Struktur Project
+- Android Studio
+- JDK 11+
+- HP Android dengan USB debugging enabled
+- ADB (Android Debug Bridge)
 
-```text
+## Setup Project
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/rrpbae/Pantrick.git
+cd Pantrick
+```
+
+### 2. Dataset
+
+Dataset **TIDAK** disimpan di repository GitHub karena ukurannya besar. Download dataset secara terpisah:
+
+**Download Link**: [LINK DATASET DI SINI]
+
+Setelah download:
+
+1. Extract file dataset
+2. Letakkan folder `Dataset_Resep` di **root project Pantrick**
+
+Struktur folder harus seperti ini:
+
+```
 Pantrick/
 ├── app/
 ├── backend/
-├── Dataset_Resep/
+├── Dataset_Resep/              ← folder dataset di sini
 │   ├── Food Ingredients and Recipe Dataset with Image Name Mapping.csv
 │   └── Food Images/
+│       └── Food Images/
+│           ├── 0.jpg
+│           ├── 1.jpg
+│           └── ...
 ├── gradlew
 ├── gradlew.bat
 └── settings.gradle.kts
 ```
 
-Dataset diperlukan oleh backend untuk memuat resep, bahan, instruksi, dan gambar.
+> ⚠️ **Penting**: Pastikan nama folder dan struktur persis seperti di atas agar backend dapat memuat dataset.
 
-# Cara Menjalankan
+### 3. Menjalankan Backend
 
-## 1. Menjalankan Backend
-
-Buka PowerShell pada **root project `Pantrick`**, bukan folder `backend`.
+Buka terminal di **root project Pantrick**, lalu jalankan:
 
 ```powershell
-cd "D:\Perkuliahan_Semester_5\Pemrograman Mobile\Pantrick"
 .\gradlew.bat :backend:run
 ```
 
-Backend berjalan pada port:
+Backend akan berjalan di port **8081**. Terminal akan menampilkan:
 
-```text
-8081
 ```
-
-` :backend:run` memang tidak kembali ke prompt selama server masih berjalan. Jika terlihat:
-
-```text
+> Task :backend:run
 83% EXECUTING
-> :backend:run
 ```
 
-itu berarti Gradle sedang menjalankan server, bukan berhenti pada 83%.
+Ini **normal** — backend sedang berjalan. **Jangan tutup terminal** selama backend masih dibutuhkan.
 
-**Jangan menekan `Ctrl+C` selama backend masih diperlukan.**
+### 4. Setup Perangkat Android
 
-## 2. Menghubungkan HP Fisik
+Buka terminal **baru** (terminal backend tetap berjalan), lalu:
 
-Buka terminal kedua.
-
-Cek perangkat:
+**Cek perangkat:**
 
 ```powershell
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices
@@ -69,205 +84,45 @@ Cek perangkat:
 
 Pastikan HP muncul dengan status `device`.
 
-Kemudian:
+**Setup ADB reverse:**
 
 ```powershell
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse tcp:8081 tcp:8081
 ```
 
-Jika berhasil, biasanya output:
+ADB reverse memungkinkan HP mengakses backend di laptop melalui `http://127.0.0.1:8081`.
 
-```text
-8081
-```
+### 5. Menjalankan Aplikasi Android
 
-Dengan ADB Reverse, koneksi menjadi:
+1. Buka project Pantrick di **Android Studio**
+2. Pastikan backend sudah berjalan
+3. Hubungkan HP via USB
+4. Pilih HP sebagai target device
+5. Klik tombol **Run ▶**
 
-```text
-HP 127.0.0.1:8081
-        ↓
-ADB Reverse
-        ↓
-Laptop 127.0.0.1:8081
-        ↓
-Ktor Backend
-```
+## Ringkasan Urutan Setup
 
-Android menggunakan:
-
-```text
-http://127.0.0.1:8081
-```
-
-sebagai alamat backend untuk setup HP fisik ini.
-
-## 3. Menjalankan Android
-
-Setelah backend dan ADB Reverse aktif:
-
-1. Buka project Pantrick di Android Studio.
-2. Hubungkan HP.
-3. Pilih HP sebagai target device.
-4. Tekan **Run ▶**.
-
-Tidak perlu menjalankan `installDebug` secara manual jika aplikasi dijalankan melalui tombol **Run ▶** Android Studio.
-
-## Urutan Development
-
-### Terminal 1
+**Terminal 1 (Backend):**
 
 ```powershell
-cd "D:\Perkuliahan_Semester_5\Pemrograman Mobile\Pantrick"
 .\gradlew.bat :backend:run
 ```
 
-Biarkan tetap berjalan.
-
-### Terminal 2
+**Terminal 2 (ADB):**
 
 ```powershell
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse tcp:8081 tcp:8081
 ```
 
-### Android Studio
+**Android Studio:**
 
-```text
+```
 Run ▶
 ```
 
-## Jika Port 8081 Sudah Digunakan
+## Catatan
 
-Jika muncul:
-
-```text
-Address already in use
-```
-
-jangan menjalankan backend kedua. Periksa:
-
-```powershell
-netstat -ano | findstr :8081
-```
-
-Jika terdapat `LISTENING`, kemungkinan backend yang lama masih berjalan.
-
-## Memeriksa ADB Reverse
-
-```powershell
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse --list
-```
-
-Jika mapping belum ada:
-
-```powershell
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse tcp:8081 tcp:8081
-```
-
-Mapping dapat perlu dibuat kembali setelah HP terputus atau koneksi ADB berubah.
-
-## Recipe Dataset
-
-Backend memuat dataset ketika startup. Dataset menyediakan:
-
-- Nama resep
-- Bahan-bahan
-- Instruksi memasak
-- Nama file gambar
-
-Data rekomendasi resep berasal dari dataset tersebut. Jangan menghapus atau memindahkan folder dataset.
-
-## Rekomendasi Resep
-
-Recommendation menggunakan bahan pantry user.
-
-Contoh:
-
-```text
-Pantry:
-- chicken
-- onion
-
-Recipe:
-- chicken
-- onion
-- milk
-- garlic
-- cheese
-```
-
-Hasil:
-
-```text
-2/5 bahan tersedia
-```
-
-Pada detail resep, bahan dapat ditampilkan:
-
-```text
-✓ Chicken      Tersedia
-✓ Onion        Tersedia
-✕ Milk         Belum tersedia
-✕ Garlic       Belum tersedia
-✕ Cheese       Belum tersedia
-```
-
-Logic ingredient matching recommendation dan cooking readiness dibuat konsisten.
-
-## Fitur Memasak
-
-Tombol memasak hanya aktif jika seluruh bahan yang diperlukan tersedia.
-
-```text
-5/5 bahan tersedia → dapat memasak
-2/5 bahan tersedia → tidak dapat memasak
-```
-
-## Notifikasi Kedaluwarsa
-
-Fitur notifikasi digunakan untuk memberikan peringatan ketika bahan pantry mendekati tanggal kedaluwarsa sesuai logic aplikasi.
-
-## Troubleshooting
-
-### `./gradlew` tidak dikenali
-
-Gunakan PowerShell Windows:
-
-```powershell
-.\gradlew.bat :backend:run
-```
-
-Jalankan dari root project, bukan dari folder `backend`.
-
-### `adb` tidak dikenali
-
-Gunakan path langsung:
-
-```powershell
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices
-```
-
-### HP tidak dapat terhubung ke backend
-
-Pastikan:
-
-1. Backend Ktor masih berjalan.
-2. HP terdeteksi oleh ADB.
-3. ADB Reverse sudah dijalankan.
-4. Base URL Android menggunakan `http://127.0.0.1:8081`.
-
-## Ringkasan
-
-```text
-1. Terminal 1
-   .\gradlew.bat :backend:run
-
-2. Terminal 2
-   adb devices
-   adb reverse tcp:8081 tcp:8081
-
-3. Android Studio
-   Run ▶ ke HP
-
-4. Backend tetap berjalan selama aplikasi membutuhkan API.
-```
+- Backend menggunakan **in-memory database** — data akan hilang saat backend di-restart
+- ADB reverse perlu dijalankan ulang jika HP terputus atau reconnect
+- Jika port 8081 sudah digunakan, cek dengan: `netstat -ano | findstr :8081`
