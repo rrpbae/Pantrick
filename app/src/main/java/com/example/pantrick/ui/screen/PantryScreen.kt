@@ -113,10 +113,12 @@ fun PantryScreen(
     currentUser: User?,
     items: List<PantryItem>,
     pantryViewModel: PantryViewModel,
+    photoPath: String? = null,
     onNavigateToAdd: (StorageLocation) -> Unit,
     onNavigateToEdit: (String) -> Unit = {},
     onPlanMealClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(0.dp),
     modifier: Modifier = Modifier
 ) {
@@ -312,7 +314,8 @@ fun PantryScreen(
                 searchQuery = ""
                 chipFilter = ChipFilter.None
             },
-            onBellClick = onBellClick,
+            photoPath = photoPath,
+            onBellClick = onNotificationClick,
             onAvatarClick = onProfileClick,
             onMarkUsed = onMarkUsed,
             onEditClick = { onNavigateToEdit(it.id) },
@@ -331,6 +334,7 @@ fun StatelessPantryContent(
     currentUser: User?,
     uiState: PantryUiState,
     items: List<PantryItem>,
+    photoPath: String? = null,
     selectedLocation: StorageLocation,
     searchQuery: String,
     chipFilter: ChipFilter,
@@ -400,6 +404,7 @@ fun StatelessPantryContent(
         item(key = "header_top", span = { GridItemSpan(2) }) {
             PantryTopHeader(
                 currentUser = currentUser,
+                photoPath = photoPath,
                 hasUrgentItems = hasUrgentItemsOverall,
                 onBellClick = onBellClick,
                 onAvatarClick = onAvatarClick

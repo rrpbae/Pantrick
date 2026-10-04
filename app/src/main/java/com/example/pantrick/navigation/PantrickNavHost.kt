@@ -33,7 +33,9 @@ import com.example.pantrick.data.model.StorageLocation
 import com.example.pantrick.ui.component.PantrickBottomBar
 import com.example.pantrick.ui.screen.AddIngredientScreen
 import com.example.pantrick.ui.screen.AddPantryItemScreen
+import com.example.pantrick.ui.screen.ChangePasswordScreen
 import com.example.pantrick.ui.screen.EditIngredientScreen
+import com.example.pantrick.ui.screen.EditProfileScreen
 import com.example.pantrick.ui.screen.HomeScreen
 import com.example.pantrick.ui.screen.LoginScreen
 import com.example.pantrick.ui.screen.NotificationScreen
@@ -55,6 +57,7 @@ fun PantrickNavHost(
     modifier: Modifier = Modifier
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
+    val photoPath by authViewModel.profileImagePath.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
 
     LaunchedEffect(currentUser) {
@@ -158,8 +161,9 @@ fun PantrickNavHost(
                 HomeScreen(
                     currentUser = currentUser,
                     items = pantryItems,
+                    photoPath = photoPath,
                     contentPadding = innerPadding,
-                    onNotificationClick = { navController.navigate(NotificationRoute) },
+                    onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     onNavigateToAdd = { navController.navigate(AddPantryItemRoute("KULKAS")) },
                     onNavigateToPantry = { navController.navigate(PantryRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }
@@ -171,10 +175,12 @@ fun PantrickNavHost(
                     currentUser = currentUser,
                     items = pantryItems,
                     pantryViewModel = pantryViewModel,
+                    photoPath = photoPath,
                     onNavigateToAdd = { location -> navController.navigate(AddPantryItemRoute(location.name)) },
                     onNavigateToEdit = { itemId -> navController.navigate(EditIngredientRoute(itemId)) { launchSingleTop = true } },
                     onPlanMealClick = { navController.navigate(RecipesRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
                     contentPadding = innerPadding
                 )
             }
@@ -203,8 +209,9 @@ fun PantrickNavHost(
                 AddIngredientScreen(
                     currentUser = currentUser,
                     pantryViewModel = pantryViewModel,
+                    photoPath = photoPath,
                     onNavigateBack = { navController.popBackStack() },
-                    onNotificationClick = { navController.navigate(NotificationRoute) },
+                    onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     onNavigateToRecipeDetail = { recipeId ->
                         navController.navigate(RecipeDetailRoute(recipeId))
@@ -235,6 +242,10 @@ fun PantrickNavHost(
 
             composable<RecipesRoute> {
                 RecipesScreen(
+                    currentUser = currentUser,
+                    photoPath = photoPath,
+                    onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
+                    onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     contentPadding = innerPadding,
                     onNavigateToDetail = { recipeId ->
                         navController.navigate(RecipeDetailRoute(recipeId))
@@ -246,6 +257,10 @@ fun PantrickNavHost(
                 val detailRoute = backStackEntry.toRoute<RecipeDetailRoute>()
                 RecipeDetailScreen(
                     recipeId = detailRoute.recipeId,
+                    currentUser = currentUser,
+                    photoPath = photoPath,
+                    onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
+                    onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     contentPadding = innerPadding,
                     onNavigateBack = {
                         navController.popBackStack()
@@ -259,11 +274,42 @@ fun PantrickNavHost(
                     items = pantryItems,
                     itemsCount = pantryItems.size,
                     authViewModel = authViewModel,
+                    onEditProfileClick = {
+                        navController.navigate(EditProfileRoute)
+                    },
+                    onChangePasswordClick = {
+                        navController.navigate(ChangePasswordRoute)
+                    },
                     onLogoutConfirmed = {
                         navController.navigate(LoginRoute) {
                             popUpTo(0) { inclusive = true }
                             launchSingleTop = true
                         }
+                    },
+                    contentPadding = innerPadding
+                )
+            }
+
+            composable<EditProfileRoute> {
+                EditProfileScreen(
+                    currentUser = currentUser,
+                    initialPhotoPath = authViewModel.getProfileImagePath(),
+                    onSave = { newName, newPhotoPath ->
+                        authViewModel.updateProfileName(newName)
+                        authViewModel.updateProfilePhoto(newPhotoPath)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    contentPadding = innerPadding
+                )
+            }
+
+            composable<ChangePasswordRoute> {
+                ChangePasswordScreen(
+                    authViewModel = authViewModel,
+                    onNavigateBack = {
+                        navController.popBackStack()
                     },
                     contentPadding = innerPadding
                 )

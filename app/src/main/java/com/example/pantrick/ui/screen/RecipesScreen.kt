@@ -20,10 +20,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pantrick.core.ui.theme.*
+import com.example.pantrick.data.model.User
 import com.example.pantrick.ui.component.HomeHeader
 
 @Composable
 fun RecipesScreen(
+    currentUser: User? = null,
+    photoPath: String? = null,
+    onNotificationClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
     onNavigateToDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier
@@ -38,9 +43,10 @@ fun RecipesScreen(
         // 1. HEADER
         item {
             HomeHeader(
-                userName = "Alex Morgan",
-                onNotificationClick = { /* TODO */ },
-                onProfileClick = { /* TODO */ }
+                userName = currentUser?.fullName ?: "Pengguna",
+                photoPath = photoPath,
+                onNotificationClick = onNotificationClick,
+                onProfileClick = onProfileClick
             )
         }
 

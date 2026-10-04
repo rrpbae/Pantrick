@@ -37,6 +37,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.os.Build
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import com.example.pantrick.R
 import com.example.pantrick.core.ui.theme.ColorDarkChocolate
 import com.example.pantrick.core.ui.theme.ColorForestGreen
 import com.example.pantrick.core.ui.theme.PantrickTheme
@@ -49,6 +57,7 @@ import com.example.pantrick.ui.component.EmptyPantryState
 import com.example.pantrick.ui.component.ExpiringItemCard
 import com.example.pantrick.ui.component.GreetingCard
 import com.example.pantrick.ui.component.HomeHeader
+import com.example.pantrick.ui.component.IngredientDetailSheet
 import com.example.pantrick.ui.component.RecipePairingSection
 import com.example.pantrick.ui.component.SummaryCardsRow
 import com.example.pantrick.util.PantrickConstants
@@ -61,6 +70,7 @@ private const val TAG = "PantrickHome"
 fun HomeScreen(
     currentUser: User?,
     items: List<PantryItem>,
+    photoPath: String? = null,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNavigateToAdd: () -> Unit = {},
@@ -96,6 +106,14 @@ fun HomeScreen(
         RecipeCatalog.findBestMatch(items, RecipeCatalog.MIN_RECIPE_MATCH_PERCENT)
     }
 
+    var selectedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedItem = remember(selectedItemId, items) { items.find { it.id == selectedItemId } }
+
+    val blurRadius by animateDpAsState(
+        targetValue = if (selectedItem != null) 14.dp else 0.dp,
+        label = "HomeBlurAnimation"
+    )
+
     StatelessHomeContent(
         userName = fullName,
         greeting = greeting,
@@ -105,6 +123,9 @@ fun HomeScreen(
         matchedRecipe = matchedRecipe,
         isFavorite = isFavorite,
         isPantryEmpty = items.isEmpty(),
+        selectedItem = selectedItem,
+        blurRadius = blurRadius,
+        photoPath = photoPath,
         onFavoriteToggle = {
             isFavorite = !isFavorite
             Log.d(TAG, "Recipe favorite status toggled: $isFavorite")
@@ -113,8 +134,11 @@ fun HomeScreen(
         onProfileClick = onProfileClick,
         onNavigateToAdd = onNavigateToAdd,
         onViewAllAttentionClick = onNavigateToPantry,
-        onFindRecipeClick = { item ->
-            Log.d(TAG, "Find recipe clicked for item: ${item.name}")
+        onDetailClick = { item ->
+            selectedItemId = item.id
+        },
+        onDismissDetail = {
+            selectedItemId = null
         },
         onCookNowClick = {
             Log.d(TAG, "Cook now clicked for recipe: ${matchedRecipe?.title}")
@@ -137,71 +161,85 @@ fun StatelessHomeContent(
     matchedRecipe: Recipe?,
     isFavorite: Boolean,
     isPantryEmpty: Boolean,
+    selectedItem: PantryItem? = null,
+    blurRadius: Dp = 0.dp,
+    photoPath: String? = null,
     onFavoriteToggle: () -> Unit,
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit,
     onNavigateToAdd: () -> Unit,
     onViewAllAttentionClick: () -> Unit,
-    onFindRecipeClick: (PantryItem) -> Unit,
+    onDetailClick: (PantryItem) -> Unit = {},
+    onFindRecipeClick: (PantryItem) -> Unit = onDetailClick,
+    onDismissDetail: () -> Unit = {},
     onCookNowClick: () -> Unit,
     onPlanMealClick: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = contentPadding
-    ) {
-        // 1. Header Pantrick
-        item {
-            HomeHeader(
-                userName = userName,
-                onNotificationClick = onNotificationClick,
-                onProfileClick = onProfileClick
-            )
-        }
+    val blurModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurRadius > 0.dp) {
+        Modifier.blur(blurRadius)
+    } else {
+        Modifier
+    }
 
-        item { Spacer(modifier = Modifier.height(6.dp)) }
-
-        // 2. Kartu Sapaan Hijau
-        item {
-            GreetingCard(
-                greeting = greeting,
-                totalCount = totalCount,
-                expiringCount = expiringCount
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(14.dp)) }
-
-        // 3. Dua Kartu Ringkasan
-        item {
-            SummaryCardsRow(
-                totalCount = totalCount,
-                expiringCount = expiringCount
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-
-        // [Materi: Conditional UI / Empty State vs Content]
-        if (isPantryEmpty) {
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(blurModifier)
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = contentPadding
+        ) {
+            // 1. Header Pantrick
             item {
-                EmptyPantryState(
-                    onAddIngredientClick = onNavigateToAdd
+                HomeHeader(
+                    userName = userName,
+                    photoPath = photoPath,
+                    onNotificationClick = onNotificationClick,
+                    onProfileClick = onProfileClick
                 )
             }
-        } else {
-            // 4. Section Bahan Terbaru (scroll horizontal, max 5)
+
+            item { Spacer(modifier = Modifier.height(6.dp)) }
+
+            // 2. Kartu Sapaan Hijau
             item {
-                RecentIngredientsSection(
-                    items = recentItems,
-                    onViewAllClick = onViewAllAttentionClick,
-                    onFindRecipeClick = onFindRecipeClick
+                GreetingCard(
+                    greeting = greeting,
+                    totalCount = totalCount,
+                    expiringCount = expiringCount
                 )
             }
+
+            item { Spacer(modifier = Modifier.height(14.dp)) }
+
+            // 3. Dua Kartu Ringkasan
+            item {
+                SummaryCardsRow(
+                    totalCount = totalCount,
+                    expiringCount = expiringCount
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+
+            // [Materi: Conditional UI / Empty State vs Content]
+            if (isPantryEmpty) {
+                item {
+                    EmptyPantryState(
+                        onAddIngredientClick = onNavigateToAdd
+                    )
+                }
+            } else {
+                // 4. Section Bahan Terbaru (scroll horizontal, max 5)
+                item {
+                    RecentIngredientsSection(
+                        items = recentItems,
+                        onViewAllClick = onViewAllAttentionClick,
+                        onDetailClick = onDetailClick
+                    )
+                }
 
             // 5. Section "Smart Recipe Pairings" (hanya jika ada resep yang cocok)
             if (matchedRecipe != null) {
@@ -222,6 +260,15 @@ fun StatelessHomeContent(
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
+
+    // Pop up Bottom Sheet Detail Bahan
+    selectedItem?.let { item ->
+        IngredientDetailSheet(
+            item = item,
+            onDismissRequest = onDismissDetail
+        )
+    }
+}
 }
 
 // Komponen deretan kartu bahan terbaru secara horizontal
@@ -229,7 +276,7 @@ fun StatelessHomeContent(
 fun RecentIngredientsSection(
     items: List<PantryItem>,
     onViewAllClick: () -> Unit,
-    onFindRecipeClick: (PantryItem) -> Unit,
+    onDetailClick: (PantryItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -290,7 +337,9 @@ fun RecentIngredientsSection(
                 items(items, key = { it.id }) { item ->
                     ExpiringItemCard(
                         item = item,
-                        onFindRecipeClick = { onFindRecipeClick(item) }
+                        onFindRecipeClick = { onDetailClick(item) },
+                        buttonText = stringResource(R.string.btn_ingredient_detail),
+                        buttonIcon = Icons.Rounded.Info
                     )
                 }
             }

@@ -21,11 +21,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pantrick.core.ui.theme.*
+import com.example.pantrick.data.model.User
 import com.example.pantrick.ui.component.HomeHeader
 
 @Composable
 fun RecipeDetailScreen(
     recipeId: String,
+    currentUser: User? = null,
+    photoPath: String? = null,
+    onNotificationClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
     onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -50,9 +55,10 @@ fun RecipeDetailScreen(
                 }
                 Box(modifier = Modifier.weight(1f)) {
                     HomeHeader(
-                        userName = "Alex Morgan",
-                        onNotificationClick = { /* TODO */ },
-                        onProfileClick = { /* TODO */ }
+                        userName = currentUser?.fullName ?: "Pengguna",
+                        photoPath = photoPath,
+                        onNotificationClick = onNotificationClick,
+                        onProfileClick = onProfileClick
                     )
                 }
             }

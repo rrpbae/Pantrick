@@ -23,6 +23,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentUser = MutableStateFlow<User?>(authRepository.getCurrentUser())
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
+    private val _profileImagePath = MutableStateFlow<String?>(authRepository.getProfileImagePath(authRepository.getCurrentUser()?.email))
+    val profileImagePath: StateFlow<String?> = _profileImagePath.asStateFlow()
+
     // [Materi: Login Handler] Memproses login dan memperbarui state sesi
     fun login(
         email: String,
@@ -34,6 +37,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             val result = authRepository.login(email, password, rememberMe)
             if (result is AuthResult.Success) {
                 _currentUser.value = result.user
+                _profileImagePath.value = authRepository.getProfileImagePath(result.user.email)
             }
             onResult(result)
         }
@@ -51,6 +55,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             val result = authRepository.register(fullName, email, password, rememberMe)
             if (result is AuthResult.Success) {
                 _currentUser.value = result.user
+                _profileImagePath.value = authRepository.getProfileImagePath(result.user.email)
             }
             onResult(result)
         }
@@ -60,10 +65,58 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun logout() {
         authRepository.logout()
         _currentUser.value = null
+        _profileImagePath.value = null
     }
 
     // [Materi: Initial Session Check] Memeriksa apakah ada sesi aktif saat app pertama kali dibuka
     fun hasActiveSession(): Boolean {
         return _currentUser.value != null
+    }
+
+    // [Materi: Edit Profil] Memperbarui nama pengguna aktif
+    fun updateProfileName(newFullName: String): Boolean {
+        val user = _currentUser.value ?: return false
+        val updated = authRepository.updateUserName(user.email, newFullName)
+        if (updated != null) {
+            _currentUser.value = updated
+            return true
+        }
+        return false
+    }
+
+    // [Materi: Pengaturan Pengingat] Toggle pengingat kedaluwarsa
+    fun isExpiryReminderEnabled(): Boolean {
+        return authRepository.isExpiryReminderEnabled(_currentUser.value?.email)
+    }
+
+    fun setExpiryReminderEnabled(enabled: Boolean) {
+        authRepository.setExpiryReminderEnabled(_currentUser.value?.email, enabled)
+    }
+
+    // [Materi: Foto Profil] Mengambil dan memperbarui foto profil pengguna
+    fun getProfileImagePath(): String? {
+        return authRepository.getProfileImagePath(_currentUser.value?.email)
+    }
+
+    fun updateProfilePhoto(path: String?) {
+        val user = _currentUser.value ?: return
+        authRepository.setProfileImagePath(user.email, path)
+        _profileImagePath.value = path
+    }
+
+    // [Materi: Ubah Password] Memverifikasi password lama dan menyimpan password baru
+    fun changePassword(oldPassword: String, newPassword: String): String? {
+        val user = _currentUser.value ?: return "Sesi pengguna tidak valid."
+        val oldHash = User.hashPassword(oldPassword)
+        if (oldHash != user.passwordHash) {
+            return "Password lama salah."
+        }
+        val newHash = User.hashPassword(newPassword)
+        val updated = authRepository.updateUserPassword(user.email, newHash)
+        if (updated != null) {
+            _currentUser.value = updated
+            return null
+        }
+        return "Gagal memperbarui password."
     }
 }

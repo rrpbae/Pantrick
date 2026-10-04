@@ -70,6 +70,7 @@ fun findMatchingRecipes(selected: Set<String>): List<Recipe> {
 fun AddIngredientScreen(
     currentUser: User?,
     pantryViewModel: PantryViewModel? = null,
+    photoPath: String? = null,
     onNavigateBack: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
@@ -118,6 +119,7 @@ fun AddIngredientScreen(
         item {
             HomeHeader(
                 userName = userNameSafe,
+                photoPath = photoPath,
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )

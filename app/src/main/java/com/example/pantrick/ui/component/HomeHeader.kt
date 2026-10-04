@@ -42,13 +42,11 @@ import com.example.pantrick.util.PantrickConstants
 @Composable
 fun HomeHeader(
     userName: String,
+    photoPath: String? = null,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // [Materi: Dynamic String Processing] Mengambil inisial huruf pertama nama pengguna
-    val initial = userName.trim().take(1).uppercase().ifEmpty { "?" }
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -77,7 +75,7 @@ fun HomeHeader(
             )
         }
 
-        // [Materi: Row & Badge Notification] Ikon lonceng dengan titik merah urgensi + avatar inisial pengguna
+        // [Materi: Row & Badge Notification] Ikon lonceng dengan titik merah urgensi + avatar pengguna
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -107,22 +105,13 @@ fun HomeHeader(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // [Materi: Circle Avatar] Lingkaran avatar warna peach berisi inisial nama pengguna login
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(ColorWarmPeach)
-                    .clickable { onProfileClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = initial,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
+            // [Materi: Shared UserAvatar] Komponen avatar bersama dengan foto / inisial
+            UserAvatar(
+                userName = userName,
+                photoPath = photoPath,
+                size = 36.dp,
+                onClick = onProfileClick
+            )
         }
     }
 }

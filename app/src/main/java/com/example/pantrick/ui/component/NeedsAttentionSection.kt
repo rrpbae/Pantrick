@@ -146,7 +146,9 @@ fun NeedsAttentionSection(
 fun ExpiringItemCard(
     item: PantryItem,
     onFindRecipeClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    buttonText: String = stringResource(R.string.btn_find_recipe),
+    buttonIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.AutoAwesome
 ) {
     // [Materi: ExpiryStatus Helper] Format badge kedaluwarsa sesuai single source of truth ExpiryStatus
     val expiryInfo = ExpiryStatus.evaluate(item.daysLeft)
@@ -248,14 +250,14 @@ fun ExpiringItemCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AutoAwesome,
+                            imageVector = buttonIcon,
                             contentDescription = null,
                             tint = ColorDarkChocolate,
                             modifier = Modifier.size(13.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = stringResource(R.string.btn_find_recipe),
+                            text = buttonText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = ColorDarkChocolate

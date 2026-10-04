@@ -89,8 +89,17 @@
     <string name="badge_one_day">1 hari lagi</string>
     <string name="badge_days_format">%1$d hari lagi</string>
     <string name="detail_expires_tomorrow">Kedaluwarsa besok • %1$s</string>
-    <string name="detail_expires_in_days">Dalam %1$d hari • %1$s</string>
     <string name="btn_find_recipe">Cari Resep</string>
+    <string name="btn_ingredient_detail">Detail Bahan</string>
+    <string name="detail_ingredient_title">Detail Bahan Makanan</string>
+    <string name="detail_quantity_title">Jumlah / Takaran</string>
+    <string name="detail_storage_title">Lokasi Simpan</string>
+    <string name="detail_expiry_title">Tanggal Kedaluwarsa</string>
+    <string name="detail_btn_close">Tutup</string>
+    <string name="status_expired">Sudah Kedaluwarsa</string>
+    <string name="status_needs_attention">Perlu Perhatian</string>
+    <string name="status_safe">Aman</string>
+    <string name="estimated_expiry_desc">Perkiraan otomatis</string>
 
     <!-- Empty State -->
     <string name="empty_pantry_title">Pantry-mu masih kosong</string>

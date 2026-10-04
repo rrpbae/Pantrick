@@ -85,4 +85,32 @@ class AuthRepository(private val preferences: PantrickPreferences) {
         val activeEmail = preferences.getActiveSessionEmail() ?: return null
         return preferences.getUsers().find { it.email == activeEmail }
     }
+
+    // [Materi: Update Profil] Memperbarui nama pengguna
+    fun updateUserName(email: String, newFullName: String): User? {
+        return preferences.updateUserName(email, newFullName)
+    }
+
+    // [Materi: Preferensi Pengingat] Pengaturan toggle pengingat kedaluwarsa
+    fun isExpiryReminderEnabled(email: String?): Boolean {
+        return preferences.isExpiryReminderEnabled(email)
+    }
+
+    fun setExpiryReminderEnabled(email: String?, enabled: Boolean) {
+        preferences.setExpiryReminderEnabled(email, enabled)
+    }
+
+    // [Materi: Update Kata Sandi] Memperbarui hash kata sandi pengguna
+    fun updateUserPassword(email: String, newPasswordHash: String): User? {
+        return preferences.updateUserPassword(email, newPasswordHash)
+    }
+
+    // [Materi: Foto Profil] Pengelolaan path foto profil pengguna
+    fun getProfileImagePath(email: String?): String? {
+        return preferences.getProfileImagePath(email)
+    }
+
+    fun setProfileImagePath(email: String?, path: String?) {
+        preferences.setProfileImagePath(email, path)
+    }
 }

@@ -40,35 +40,26 @@ import com.example.pantrick.util.PantrickConstants
 @Composable
 fun PantryTopHeader(
     currentUser: User?,
+    photoPath: String? = null,
     hasUrgentItems: Boolean,
     onBellClick: () -> Unit,
     onAvatarClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val initial = currentUser?.fullName?.trim()?.take(1)?.uppercase()?.ifBlank { "P" } ?: "P"
-
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = PantrickConstants.HOME_HORIZONTAL_PADDING, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // [Materi: Avatar Inisial] Avatar bulat dengan warna Warm Peach
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(ColorWarmPeach)
-                .clickable { onAvatarClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = initial,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.tertiary
-            )
-        }
+        // [Materi: Shared UserAvatar] Avatar bulat dengan foto / inisial
+        UserAvatar(
+            userName = currentUser?.fullName ?: "Pantry",
+            photoPath = photoPath,
+            size = 42.dp,
+            fontSize = 18.sp,
+            onClick = onAvatarClick
+        )
 
         Spacer(modifier = Modifier.width(12.dp))
 

@@ -32,6 +32,8 @@ class PantrickPreferences(context: Context) {
         private const val KEY_USERS = "registered_users"
         private const val KEY_PERSISTED_SESSION_EMAIL = "persisted_session_email"
         private const val KEY_PANTRY_PREFIX = "pantry_"
+        private const val KEY_EXPIRY_REMINDER_PREFIX = "expiry_reminder_"
+        private const val KEY_PROFILE_IMAGE_PREFIX = "profile_image_"
 
         // [Materi: In-Memory Session] Menyimpan sesi sementara jika "Ingat saya" tidak dicentang
         @Volatile
@@ -55,6 +57,30 @@ class PantrickPreferences(context: Context) {
     fun saveUsers(users: List<User>) {
         val rawJson = json.encodeToString(users)
         prefs.edit().putString(KEY_USERS, rawJson).apply()
+    }
+
+    // [Materi: Update Profil] Memperbarui nama lengkap pengguna di penyimpanan lokal
+    fun updateUserName(email: String, newFullName: String): User? {
+        val normalized = User.normalizeEmail(email)
+        val users = getUsers().toMutableList()
+        val index = users.indexOfFirst { it.email == normalized }
+        if (index == -1) return null
+        val updatedUser = users[index].copy(fullName = newFullName.trim())
+        users[index] = updatedUser
+        saveUsers(users)
+        return updatedUser
+    }
+
+    // [Materi: Update Kata Sandi] Memperbarui hash kata sandi pengguna
+    fun updateUserPassword(email: String, newPasswordHash: String): User? {
+        val normalized = User.normalizeEmail(email)
+        val users = getUsers().toMutableList()
+        val index = users.indexOfFirst { it.email == normalized }
+        if (index == -1) return null
+        val updatedUser = users[index].copy(passwordHash = newPasswordHash)
+        users[index] = updatedUser
+        saveUsers(users)
+        return updatedUser
     }
 
     // ==================== PENGELOLAAN SESI AKTIF ====================
@@ -100,5 +126,34 @@ class PantrickPreferences(context: Context) {
         val normalized = User.normalizeEmail(email)
         val rawJson = json.encodeToString(items)
         prefs.edit().putString("$KEY_PANTRY_PREFIX$normalized", rawJson).apply()
+    }
+
+    // ==================== PENGELOLAAN PREFERENSI PENGINGAT ====================
+
+    fun isExpiryReminderEnabled(email: String?): Boolean {
+        val key = if (email.isNullOrBlank()) "expiry_reminder_default" else "$KEY_EXPIRY_REMINDER_PREFIX${User.normalizeEmail(email)}"
+        return prefs.getBoolean(key, true)
+    }
+
+    fun setExpiryReminderEnabled(email: String?, enabled: Boolean) {
+        val key = if (email.isNullOrBlank()) "expiry_reminder_default" else "$KEY_EXPIRY_REMINDER_PREFIX${User.normalizeEmail(email)}"
+        prefs.edit().putBoolean(key, enabled).apply()
+    }
+
+    // ==================== PENGELOLAAN FOTO PROFIL ====================
+
+    fun getProfileImagePath(email: String?): String? {
+        if (email.isNullOrBlank()) return null
+        return prefs.getString("$KEY_PROFILE_IMAGE_PREFIX${User.normalizeEmail(email)}", null)
+    }
+
+    fun setProfileImagePath(email: String?, path: String?) {
+        if (email.isNullOrBlank()) return
+        val key = "$KEY_PROFILE_IMAGE_PREFIX${User.normalizeEmail(email)}"
+        if (path == null) {
+            prefs.edit().remove(key).apply()
+        } else {
+            prefs.edit().putString(key, path).apply()
+        }
     }
 }
