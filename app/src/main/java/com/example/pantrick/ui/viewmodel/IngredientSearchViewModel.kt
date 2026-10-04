@@ -68,9 +68,10 @@ class IngredientSearchViewModel(application: Application) : AndroidViewModel(app
                     SearchUiState.Success(recommendations)
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Gagal mengambil rekomendasi", error)
+                    Log.e(TAG, "Gagal mengambil rekomendasi: ${error.javaClass.simpleName} - ${error.message}", error)
+                    val detail = error.localizedMessage ?: error.message ?: error.javaClass.simpleName
                     SearchUiState.Error(
-                        "Gagal terhubung ke server. Pastikan backend berjalan dan periksa koneksi."
+                        "Gagal terhubung ke server ($detail). Pastikan backend berjalan dan periksa koneksi."
                     )
                 }
             )

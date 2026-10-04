@@ -28,9 +28,11 @@ fun Route.recommendationRoutes(recommendationService: RecommendationService) {
             val request = try {
                 call.receive<IngredientSearchRequest>()
             } catch (e: Exception) {
+                io.ktor.server.application.ApplicationCallPipeline.ApplicationPhase.Plugins // dummy reference or logger
+                call.application.environment.log.error("Failed parsing IngredientSearchRequest", e)
                 call.respond(
                     HttpStatusCode.BadRequest,
-                    ErrorResponse(success = false, message = "Format request tidak valid. Kirim JSON: {\"ingredients\":[\"chicken\"]}")
+                    ErrorResponse(success = false, message = "Format request tidak valid: ${e.message}")
                 )
                 return@post
             }
