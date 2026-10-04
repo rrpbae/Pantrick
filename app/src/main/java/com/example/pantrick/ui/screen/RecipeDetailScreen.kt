@@ -1,9 +1,12 @@
 package com.example.pantrick.ui.screen
 
-import androidx.compose.foundation.Image
+import android.util.Log
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,88 +18,62 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.pantrick.R
 import com.example.pantrick.core.network.PantrickApiConfig
 import com.example.pantrick.core.ui.theme.*
+import com.example.pantrick.data.model.BackendRecipeIngredient
 import com.example.pantrick.data.model.PantryItem
 import com.example.pantrick.data.model.Recipe
-import com.example.pantrick.data.model.RecipeCatalog
+import com.example.pantrick.ui.viewmodel.CookingSessionViewModel
+import com.example.pantrick.ui.viewmodel.CookingUiState
 import com.example.pantrick.ui.viewmodel.IngredientSearchViewModel
 import com.example.pantrick.ui.viewmodel.RecipeDetailUiState
-import com.example.pantrick.util.PantrickConstants
+import com.example.pantrick.ui.viewmodel.RecipeViewModel
+import com.example.pantrick.util.IngredientNormalizer
 
+private const val TAG_DETAIL = "RecipeDetail"
+
+// =====================================================================
+// MAIN SCREEN
+// =====================================================================
 @Composable
 fun RecipeDetailScreen(
     recipeId: String,
     savedRecipes: List<Recipe> = emptyList(),
     pantryItems: List<PantryItem> = emptyList(),
+    jwtToken: String = "",
     viewModel: IngredientSearchViewModel = viewModel(),
+    recipeViewModel: RecipeViewModel = viewModel(),
+    cookingViewModel: CookingSessionViewModel = viewModel(),
+    onPantryRefresh: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
     onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Check local catalog / saved recipes first
-    val localRecipe = remember(recipeId, savedRecipes, pantryItems) {
-        val template = RecipeCatalog.recipes.find { it.id == recipeId }
-        val saved = savedRecipes.find { it.id == recipeId }
+    val detailUiState by viewModel.detailState.collectAsState()
+    val savedList by recipeViewModel.savedRecipes.collectAsState()
+    val isSaved = savedList.any { it.id == recipeId }
+    val cookingState by cookingViewModel.cookingState.collectAsState()
 
-        if (saved != null) {
-            val finalIngredients = if (template != null && template.ingredients.isNotEmpty()) template.ingredients else saved.ingredients
-            val finalSteps = if (template != null && template.steps.isNotEmpty()) template.steps else saved.steps
-            val readyCount = if (finalIngredients.isNotEmpty()) {
-                finalIngredients.count { ing -> pantryItems.any { item -> item.name.contains(ing.keyword, ignoreCase = true) } }
-            } else saved.readyCount
-            val totalCount = if (finalIngredients.isNotEmpty()) finalIngredients.size else saved.totalCount
-            val matchPercent = if (totalCount > 0) (readyCount * 100) / totalCount else saved.matchPercent
-
-            saved.copy(matchPercent = matchPercent, readyCount = readyCount, totalCount = totalCount, ingredients = finalIngredients, steps = finalSteps)
-        } else if (template != null) {
-            val readyCount = if (template.ingredients.isNotEmpty()) {
-                template.ingredients.count { ing -> pantryItems.any { item -> item.name.contains(ing.keyword, ignoreCase = true) } }
-            } else {
-                template.ingredientKeywords.count { keyword -> pantryItems.any { item -> item.name.contains(keyword, ignoreCase = true) } }
-            }
-            val totalCount = if (template.ingredients.isNotEmpty()) template.ingredients.size else template.ingredientKeywords.size
-            val matchPercent = if (totalCount > 0) (readyCount * 100) / totalCount else 0
-            val missingCount = totalCount - readyCount
-            val missingText = if (missingCount > 0) "$missingCount bahan kurang" else "Lengkap"
-
-            Recipe(
-                id = template.id,
-                title = template.title,
-                description = template.description,
-                durationMinutes = template.durationMinutes,
-                servings = template.servings,
-                matchPercent = matchPercent,
-                usesLabel = "Cocok dengan bahanmu",
-                readyCount = readyCount,
-                totalCount = totalCount,
-                missingIngredient = missingText,
-                imageRes = template.imageRes,
-                ingredients = template.ingredients,
-                steps = template.steps
-            )
-        } else {
-            null
+    LaunchedEffect(recipeId, jwtToken) {
+        Log.d(TAG_DETAIL, "LaunchedEffect: loadRecipeDetail($recipeId)")
+        viewModel.loadRecipeDetail(recipeId)
+        
+        // Check if there's an active cooking session for this recipe
+        if (jwtToken.isNotBlank()) {
+            cookingViewModel.resumeActiveSession(recipeId, jwtToken)
         }
     }
-
-    // Backend detail state if not local
-    val detailUiState by viewModel.detailState.collectAsState()
-
-    LaunchedEffect(recipeId) {
-        if (localRecipe == null) {
-            viewModel.loadRecipeDetail(recipeId)
+    
+    // Reset cooking state when leaving screen
+    DisposableEffect(Unit) {
+        onDispose {
+            cookingViewModel.reset()
         }
     }
 
@@ -107,13 +84,12 @@ fun RecipeDetailScreen(
             .padding(contentPadding),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // TOP APP BAR
+        // ── HEADER ──
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onNavigateBack) {
@@ -123,275 +99,25 @@ fun RecipeDetailScreen(
                         tint = ColorDarkChocolate
                     )
                 }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_pantrick),
-                        contentDescription = stringResource(R.string.cd_logo),
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.size(PantrickConstants.LOGO_SIZE_SMALL)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ColorForestGreen
-                    )
-                }
+                Text(
+                    text = "Detail Resep",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = ColorDarkChocolate
+                )
             }
         }
 
-        when {
-            localRecipe != null -> {
-                val recipe = localRecipe
+        // ── KONTEN BERDASARKAN STATE ──
+        when (val state = detailUiState) {
 
-                // HERO IMAGE & BADGE
+            // -- LOADING --
+            is RecipeDetailUiState.Loading -> {
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .height(220.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(ColorPlaceholder.copy(alpha = 0.3f))
-                    ) {
-                        Image(
-                            painter = painterResource(id = recipe.imageRes),
-                            contentDescription = recipe.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        Surface(
-                            color = (if (recipe.matchPercent >= 70) ColorForestGreen else ColorWarmPeach).copy(alpha = 0.9f),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .padding(12.dp)
-                                .align(Alignment.TopStart)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Eco,
-                                    contentDescription = null,
-                                    tint = if (recipe.matchPercent >= 70) ColorSurfaceWhite else ColorDarkChocolate,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "${recipe.matchPercent}% Cocok",
-                                    color = if (recipe.matchPercent >= 70) ColorSurfaceWhite else ColorDarkChocolate,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
-
-                // TITLE & DESCRIPTION
-                item {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                        Text(
-                            text = recipe.title,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = ColorDarkChocolate,
-                            lineHeight = 28.sp
-                        )
-                        if (recipe.description.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = recipe.description,
-                                fontSize = 13.sp,
-                                color = ColorTextSubtitleBrown,
-                                lineHeight = 18.sp
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
-
-                // STATS ROW
-                val hasTime = recipe.durationMinutes > 0
-                val hasServings = recipe.servings > 0
-                if (hasTime || hasServings) {
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            if (hasTime) {
-                                StatCard(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.Rounded.Timer,
-                                    label = "WAKTU",
-                                    value = "${recipe.durationMinutes} mnt"
-                                )
-                            }
-                            if (hasServings) {
-                                StatCard(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.Rounded.People,
-                                    label = "PORSI",
-                                    value = "${recipe.servings} porsi"
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-                }
-
-                // BAHAN-BAHAN LOCAL
-                if (recipe.ingredients.isNotEmpty()) {
-                    val availableCount = recipe.ingredients.count { ing ->
-                        pantryItems.any { item -> item.name.contains(ing.keyword, ignoreCase = true) }
-                    }
-
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            Text(
-                                text = "Bahan-bahan",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = ColorDarkChocolate
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "$availableCount dari ${recipe.ingredients.size} bahan tersedia",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (availableCount == recipe.ingredients.size) ColorForestGreen else ColorTextSubtitleBrown
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                recipe.ingredients.forEach { ing ->
-                                    val isOwned = pantryItems.any { item -> item.name.contains(ing.keyword, ignoreCase = true) }
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
-                                        shape = RoundedCornerShape(14.dp),
-                                        elevation = CardDefaults.cardElevation(1.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.weight(1f)
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(26.dp)
-                                                        .background(
-                                                            color = if (isOwned) Color(0xFFE8F2EA) else Color(0xFFFFEAEA),
-                                                            shape = CircleShape
-                                                        ),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Icon(
-                                                        imageVector = if (isOwned) Icons.Rounded.Check else Icons.Rounded.Close,
-                                                        contentDescription = if (isOwned) "Tersedia di pantry" else "Belum ada di pantry",
-                                                        tint = if (isOwned) ColorForestGreen else ColorUrgencyRed,
-                                                        modifier = Modifier.size(15.dp)
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.width(12.dp))
-                                                Text(
-                                                    text = ing.name,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = ColorDarkChocolate
-                                                )
-                                            }
-                                            Text(
-                                                text = ing.amount,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = ColorTextSubtitleBrown
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-                }
-
-                // LANGKAH MEMASAK LOCAL
-                if (recipe.steps.isNotEmpty()) {
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            Text(
-                                text = "Langkah Memasak",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = ColorDarkChocolate
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                recipe.steps.forEachIndexed { index, stepText ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
-                                        shape = RoundedCornerShape(14.dp),
-                                        elevation = CardDefaults.cardElevation(1.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(14.dp),
-                                            verticalAlignment = Alignment.Top
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(26.dp)
-                                                    .background(ColorForestGreen, CircleShape),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "${index + 1}",
-                                                    color = ColorSurfaceWhite,
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Text(
-                                                text = stepText,
-                                                fontSize = 13.sp,
-                                                color = ColorDarkChocolate,
-                                                lineHeight = 19.sp
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-                }
-            }
-
-            detailUiState is RecipeDetailUiState.Loading -> {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 64.dp),
+                            .padding(vertical = 80.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = ColorForestGreen)
@@ -399,222 +125,479 @@ fun RecipeDetailScreen(
                 }
             }
 
-            detailUiState is RecipeDetailUiState.Error -> {
-                val message = (detailUiState as RecipeDetailUiState.Error).message
+            // -- ERROR --
+            is RecipeDetailUiState.Error -> {
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 64.dp),
+                            .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = message,
-                            fontSize = 15.sp,
+                            text = state.message,
                             color = ColorUrgencyRed,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            fontSize = 14.sp
                         )
                     }
                 }
             }
 
-            detailUiState is RecipeDetailUiState.Success -> {
-                val backendRecipe = (detailUiState as RecipeDetailUiState.Success).recipe
-
-                // HERO IMAGE BACKEND
+            // -- NOT FOUND / IDLE --
+            is RecipeDetailUiState.NotFound,
+            is RecipeDetailUiState.Idle -> {
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .height(220.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(ColorPlaceholder.copy(alpha = 0.3f))
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        val imageUrl = if (!backendRecipe.imageName.isNullOrEmpty()) {
-                            "${PantrickApiConfig.BASE_URL}/api/recipes/${backendRecipe.imageName}/image"
-                        } else null
+                        Text(
+                            text = "Resep tidak ditemukan.",
+                            color = ColorTextSubtitleBrown,
+                            textAlign = TextAlign.Center,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
 
+            // -- SUCCESS: TAMPILKAN DATA ASLI DARI BACKEND --
+            is RecipeDetailUiState.Success -> {
+                val recipe = state.recipe
+                Log.d(TAG_DETAIL, "SUCCESS — recipe.id=${recipe.id} title=${recipe.title} ingredients=${recipe.ingredients.size}")
+                recipe.ingredients.forEachIndexed { i, ing ->
+                    Log.d(TAG_DETAIL, "  [$i] raw=[${ing.raw}] qty=[${ing.quantity}] unit=[${ing.unit}]")
+                }
+
+                // -- Gambar --
+                item {
+                    val imageUrl = if (!recipe.imageName.isNullOrEmpty()) {
+                        "${PantrickApiConfig.BASE_URL}/api/recipes/${recipe.imageName}/image"
+                    } else null
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(ColorWarmPeach.copy(alpha = 0.4f))
+                    ) {
                         if (imageUrl != null) {
                             AsyncImage(
                                 model = imageUrl,
-                                contentDescription = backendRecipe.title,
-                                contentScale = ContentScale.Crop,
+                                contentDescription = recipe.title,
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_launcher_background),
-                                contentDescription = backendRecipe.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Restaurant,
+                                    contentDescription = null,
+                                    tint = ColorDarkChocolate.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(64.dp)
+                                )
+                            }
                         }
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
                 }
 
-                // TITLE BACKEND
+                // -- Judul --
                 item {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                         Text(
-                            text = backendRecipe.title,
-                            fontSize = 24.sp,
+                            text = recipe.title,
                             fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp,
                             color = ColorDarkChocolate,
                             lineHeight = 28.sp
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        // Tombol simpan
+                        val saveBg by animateColorAsState(
+                            if (isSaved) ColorForestGreen else ColorSurfaceWhite,
+                            animationSpec = tween(250), label = "saveBg"
+                        )
+                        val saveFg by animateColorAsState(
+                            if (isSaved) ColorSurfaceWhite else ColorForestGreen,
+                            animationSpec = tween(250), label = "saveFg"
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                recipeViewModel.toggleSaveRecipe(
+                                    Recipe(
+                                        id = recipe.id,
+                                        title = recipe.title,
+                                        savedAtEpochMillis = System.currentTimeMillis()
+                                    )
+                                )
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = saveBg,
+                                contentColor = saveFg
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, ColorForestGreen),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isSaved) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (isSaved) "Tersimpan" else "Simpan",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
                 }
 
-                // STATS ROW (If available)
-                val hasTime = (backendRecipe.cookingTimeMinutes ?: 0) > 0
-                val hasServings = (backendRecipe.servings ?: 0) > 0
-                if (hasTime || hasServings) {
+                // -- Statistik waktu/porsi --
+                val hasDuration = (recipe.cookingTimeMinutes ?: 0) > 0
+                val hasServings  = (recipe.servings ?: 0) > 0
+                if (hasDuration || hasServings) {
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            if (hasTime) {
-                                StatCard(
+                            if (hasDuration) {
+                                Card(
                                     modifier = Modifier.weight(1f),
-                                    icon = Icons.Rounded.Timer,
-                                    label = "WAKTU",
-                                    value = "${backendRecipe.cookingTimeMinutes} mnt"
-                                )
+                                    colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(1.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(Icons.Rounded.Timer, null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("WAKTU", fontSize = 10.sp, color = ColorTextSubtitleBrown, fontWeight = FontWeight.Bold)
+                                        Text("${recipe.cookingTimeMinutes} mnt", fontSize = 13.sp, color = ColorDarkChocolate, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                             if (hasServings) {
-                                StatCard(
+                                Card(
                                     modifier = Modifier.weight(1f),
-                                    icon = Icons.Rounded.People,
-                                    label = "PORSI",
-                                    value = "${backendRecipe.servings} porsi"
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-                }
-
-                // BAHAN-BAHAN BACKEND
-                if (backendRecipe.ingredients.isNotEmpty()) {
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            Text(
-                                text = "Bahan-bahan",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = ColorDarkChocolate
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                backendRecipe.ingredients.forEach { ing ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
-                                        shape = RoundedCornerShape(14.dp),
-                                        elevation = CardDefaults.cardElevation(1.dp)
+                                    colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(1.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = ing.displayName.ifBlank { ing.raw },
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = ColorDarkChocolate
-                                            )
-                                        }
+                                        Icon(Icons.Rounded.People, null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("PORSI", fontSize = 10.sp, color = ColorTextSubtitleBrown, fontWeight = FontWeight.Bold)
+                                        Text("${recipe.servings} porsi", fontSize = 13.sp, color = ColorDarkChocolate, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
 
-                // LANGKAH MEMASAK BACKEND
-                if (!backendRecipe.instructions.isNullOrEmpty()) {
-                    val stepsList = backendRecipe.instructions.split("\n", ".").map { it.trim() }.filter { it.isNotBlank() }
-                    if (stepsList.isNotEmpty()) {
-                        item {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                Text(
-                                    text = "Langkah Memasak",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                    color = ColorDarkChocolate
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
+                // ── BAHAN-BAHAN ──
+                val ings = recipe.ingredients
+                if (ings.isNotEmpty()) {
+                    // Header section
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Bahan-bahan",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = ColorDarkChocolate
+                            )
+                            
+                            // Status ketersediaan dari API check
+                            when (val state = cookingState) {
+                                is CookingUiState.ReadinessResult -> {
+                                    val readiness = state.readiness
+                                    val missingCount = readiness.ingredients.count { 
+                                        !it.isNameMatched || !it.isSufficientQty 
+                                    }
+                                    Text(
+                                        text = when {
+                                            missingCount == 0 -> "Semua bahan tersedia"
+                                            missingCount == readiness.ingredients.size -> "$missingCount bahan belum ada"
+                                            else -> "$missingCount bahan masih kurang"
+                                        },
+                                        fontSize = 12.sp,
+                                        color = if (missingCount == 0) ColorForestGreen else ColorUrgencyRed,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                else -> {
+                                    Text(
+                                        text = "Cek ketersediaan",
+                                        fontSize = 12.sp,
+                                        color = ColorTextSubtitleBrown,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
 
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    stepsList.forEachIndexed { index, stepText ->
-                                        Card(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
-                                            shape = RoundedCornerShape(14.dp),
-                                            elevation = CardDefaults.cardElevation(1.dp)
+                    // Display ingredients WITHOUT availability until API check completes
+                    when (val state = cookingState) {
+                        is CookingUiState.ReadinessResult -> {
+                            // Show ingredients WITH availability from API
+                            val readiness = state.readiness
+                            items(
+                                items = readiness.ingredients,
+                                key = { it.ingredientRaw }
+                            ) { ingAvail ->
+                                val isAvailable = ingAvail.isNameMatched && ingAvail.isSufficientQty
+                                val displayName = ingAvail.ingredientRaw.ifBlank { "Bahan tidak diketahui" }
+                                
+                                val qtyLabel: String? = when {
+                                    ingAvail.recipeQtyStr != null && ingAvail.recipeUnit != null -> 
+                                        "${ingAvail.recipeQtyStr} ${ingAvail.recipeUnit}"
+                                    ingAvail.recipeQtyStr != null -> ingAvail.recipeQtyStr
+                                    ingAvail.recipeUnit != null -> ingAvail.recipeUnit
+                                    else -> null
+                                }
+
+                                val statusText = when {
+                                    !ingAvail.isNameMatched -> "Belum tersedia"
+                                    !ingAvail.isSufficientQty && ingAvail.isQuantityComparable -> 
+                                        "Kurang ${ingAvail.recipeQtyStr ?: ""} ${ingAvail.recipeUnit ?: ""}".trim()
+                                    !ingAvail.isSufficientQty -> "Kurang"
+                                    else -> "Tersedia"
+                                }
+
+                                val bgColor by animateColorAsState(
+                                    targetValue = if (isAvailable) Color(0xFFF2FBF4) else Color(0xFFFFF8F8),
+                                    animationSpec = tween(250),
+                                    label = "ing_bg_${ingAvail.ingredientRaw}"
+                                )
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = bgColor),
+                                    shape = RoundedCornerShape(14.dp),
+                                    elevation = CardDefaults.cardElevation(1.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .background(
+                                                    color = if (isAvailable) Color(0xFFD4EDDA) else Color(0xFFFFE0E0),
+                                                    shape = CircleShape
+                                                ),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(14.dp),
-                                                verticalAlignment = Alignment.Top
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(26.dp)
-                                                        .background(ColorForestGreen, CircleShape),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text(
-                                                        text = "${index + 1}",
-                                                        color = ColorSurfaceWhite,
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.width(12.dp))
+                                            Icon(
+                                                imageVector = if (isAvailable) Icons.Rounded.Check else Icons.Rounded.Close,
+                                                contentDescription = null,
+                                                tint = if (isAvailable) ColorForestGreen else ColorUrgencyRed,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = displayName,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = ColorDarkChocolate
+                                            )
+                                            if (!qtyLabel.isNullOrBlank()) {
                                                 Text(
-                                                    text = stepText,
-                                                    fontSize = 13.sp,
-                                                    color = ColorDarkChocolate,
-                                                    lineHeight = 19.sp
+                                                    text = qtyLabel,
+                                                    fontSize = 12.sp,
+                                                    color = ColorTextSubtitleBrown
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = statusText,
+                                            fontSize = 12.sp,
+                                            color = if (isAvailable) ColorForestGreen else ColorUrgencyRed,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        else -> {
+                            // Show ingredients WITHOUT availability status before API check
+                            items(
+                                items = ings,
+                                key = { ing -> ing.raw + ing.normalizedName }
+                            ) { ing ->
+                                val displayName = ing.raw.trim().ifBlank { 
+                                    ing.normalizedName.trim() 
+                                }.ifBlank { "Bahan tidak diketahui" }
+                                
+                                val qtyLabel: String? = when {
+                                    ing.quantity != null && ing.unit != null -> "${ing.quantity} ${ing.unit}"
+                                    ing.quantity != null -> ing.quantity
+                                    ing.unit != null -> ing.unit
+                                    else -> null
+                                }
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
+                                    shape = RoundedCornerShape(14.dp),
+                                    elevation = CardDefaults.cardElevation(1.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .background(
+                                                    color = ColorTextSubtitleBrown.copy(alpha = 0.2f),
+                                                    shape = CircleShape
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Restaurant,
+                                                contentDescription = null,
+                                                tint = ColorTextSubtitleBrown,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = displayName,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = ColorDarkChocolate
+                                            )
+                                            if (!qtyLabel.isNullOrBlank()) {
+                                                Text(
+                                                    text = qtyLabel,
+                                                    fontSize = 12.sp,
+                                                    color = ColorTextSubtitleBrown
                                                 )
                                             }
                                         }
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(24.dp))
                         }
                     }
-                }
-            }
-
-            else -> {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 64.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                } else {
+                    item {
                         Text(
-                            text = "Resep tidak ditemukan.",
-                            fontSize = 15.sp,
-                            color = ColorTextSubtitleBrown,
-                            textAlign = TextAlign.Center
+                            text = "Daftar bahan tidak tersedia untuk resep ini.",
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = 13.sp,
+                            color = ColorTextSubtitleBrown
                         )
+                    }
+                }
+
+                // ── TOMBOL MEMASAK ──
+                item {
+                    CookingActionSection(
+                        recipeId = recipeId,
+                        recipe = (detailUiState as? RecipeDetailUiState.Success)?.recipe,
+                        jwtToken = jwtToken,
+                        cookingState = cookingState,
+                        cookingViewModel = cookingViewModel,
+                        onPantryRefresh = onPantryRefresh,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
+                // ── LANGKAH MEMASAK ──
+                if (!recipe.instructions.isNullOrEmpty()) {
+                    val steps = recipe.instructions
+                        .split("\n")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                        .let { if (it.size > 1) it else recipe.instructions.split(". ").map { s -> s.trim() }.filter { s -> s.isNotBlank() } }
+
+                    if (steps.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Langkah Memasak",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = ColorDarkChocolate,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
+                            )
+                        }
+                        items(steps.size) { i ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
+                                shape = RoundedCornerShape(14.dp),
+                                elevation = CardDefaults.cardElevation(1.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(26.dp)
+                                            .background(ColorForestGreen, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${i + 1}",
+                                            color = ColorSurfaceWhite,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        text = steps[i],
+                                        fontSize = 13.sp,
+                                        color = ColorDarkChocolate,
+                                        lineHeight = 19.sp,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -622,26 +605,350 @@ fun RecipeDetailScreen(
     }
 }
 
+
+// =====================================================================
+// COOKING ACTION SECTION
+// =====================================================================
+
 @Composable
-fun StatCard(modifier: Modifier, icon: ImageVector, label: String, value: String) {
-    Card(
-        modifier = modifier.defaultMinSize(minHeight = 76.dp),
-        colors = CardDefaults.cardColors(containerColor = ColorSurfaceWhite),
-        shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorTextSubtitleBrown, letterSpacing = 0.5.sp, maxLines = 1)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ColorDarkChocolate, textAlign = TextAlign.Center, lineHeight = 16.sp)
+private fun CookingActionSection(
+    recipeId: String,
+    recipe: com.example.pantrick.data.model.BackendRecipe?,
+    jwtToken: String,
+    cookingState: CookingUiState,
+    cookingViewModel: CookingSessionViewModel,
+    onPantryRefresh: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (recipe == null || jwtToken.isBlank()) return
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        when (cookingState) {
+            is CookingUiState.Idle -> {
+                // Tombol: Cek Ketersediaan Bahan
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E6)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.Info, contentDescription = null, tint = ColorWarmPeach, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Cek ketersediaan bahan untuk resep ini",
+                                fontSize = 12.sp,
+                                color = ColorTextSubtitleBrown
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        cookingViewModel.checkReadiness(recipeId, jwtToken)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorForestGreen),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Cek Ketersediaan Bahan", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            is CookingUiState.CheckingReadiness -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = ColorForestGreen, modifier = Modifier.size(32.dp))
+                }
+            }
+
+            is CookingUiState.ReadinessResult -> {
+                val readiness = cookingState.readiness
+                if (readiness.canCook) {
+                    // Semua bahan tersedia — tombol MEMASAK aktif
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF2FBF4)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = ColorForestGreen, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Semua bahan tersedia!",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ColorForestGreen
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                cookingViewModel.startCooking(recipeId, jwtToken)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorForestGreen),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.Restaurant, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Mulai Memasak", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    // Ada bahan yang kurang — tombol disabled
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8F8)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Rounded.Close, contentDescription = null, tint = ColorUrgencyRed, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = "Masih ada bahan yang belum tersedia",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ColorUrgencyRed
+                                    )
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = readiness.message,
+                                    fontSize = 12.sp,
+                                    color = ColorTextSubtitleBrown
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = { },
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ColorTextSubtitleBrown.copy(alpha = 0.3f),
+                                disabledContainerColor = ColorTextSubtitleBrown.copy(alpha = 0.3f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.Restaurant, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Tidak Bisa Memasak", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            is CookingUiState.Starting -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = ColorForestGreen, modifier = Modifier.size(32.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("Memulai sesi memasak...", fontSize = 12.sp, color = ColorTextSubtitleBrown)
+                    }
+                }
+            }
+
+            is CookingUiState.Active -> {
+                val session = cookingState.session
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4E6)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Restaurant, contentDescription = null, tint = ColorWarmPeach, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Sedang Memasak",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ColorDarkChocolate
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = session.recipeTitle,
+                                fontSize = 12.sp,
+                                color = ColorTextSubtitleBrown
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                cookingViewModel.cancelCooking(jwtToken) {
+                                    onPantryRefresh()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorUrgencyRed),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, ColorUrgencyRed),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Batalkan", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = {
+                                cookingViewModel.completeCooking(jwtToken) {
+                                    onPantryRefresh()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorForestGreen),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Selesai", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            is CookingUiState.Cancelling -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = ColorUrgencyRed, modifier = Modifier.size(32.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("Membatalkan sesi...", fontSize = 12.sp, color = ColorTextSubtitleBrown)
+                    }
+                }
+            }
+
+            is CookingUiState.Cancelled -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8F8)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = null, tint = ColorUrgencyRed, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "Sesi dibatalkan",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ColorUrgencyRed
+                            )
+                            Text(
+                                text = "Bahan pantry telah dikembalikan",
+                                fontSize = 11.sp,
+                                color = ColorTextSubtitleBrown
+                            )
+                        }
+                    }
+                }
+            }
+
+            is CookingUiState.Completing -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = ColorForestGreen, modifier = Modifier.size(32.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("Menyelesaikan sesi...", fontSize = 12.sp, color = ColorTextSubtitleBrown)
+                    }
+                }
+            }
+
+            is CookingUiState.Completed -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF2FBF4)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = ColorForestGreen, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "Selamat! Masakan selesai",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ColorForestGreen
+                            )
+                            Text(
+                                text = "Bahan pantry telah dikurangi",
+                                fontSize = 11.sp,
+                                color = ColorTextSubtitleBrown
+                            )
+                        }
+                    }
+                }
+            }
+
+            is CookingUiState.Error -> {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8F8)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Close, contentDescription = null, tint = ColorUrgencyRed, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Terjadi Kesalahan",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ColorUrgencyRed
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = "Gagal menghubungi server. Silakan coba lagi.",
+                                fontSize = 12.sp,
+                                color = ColorTextSubtitleBrown
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            cookingViewModel.reset()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorForestGreen),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Coba Lagi", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }

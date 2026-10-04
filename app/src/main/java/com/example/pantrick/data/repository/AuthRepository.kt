@@ -4,6 +4,7 @@ package com.example.pantrick.data.repository
 import android.util.Log
 import com.example.pantrick.data.local.PantrickPreferences
 import com.example.pantrick.data.model.User
+import com.example.pantrick.util.JwtHelper
 
 private const val TAG = "AuthRepository"
 
@@ -21,7 +22,8 @@ class AuthRepository(private val preferences: PantrickPreferences) {
         fullName: String,
         email: String,
         password: String,
-        rememberMe: Boolean = false
+        rememberMe: Boolean = false,
+        jwtToken: String? = null
     ): AuthResult {
         val normalizedEmail = User.normalizeEmail(email)
         val users = preferences.getUsers().toMutableList()
@@ -41,9 +43,15 @@ class AuthRepository(private val preferences: PantrickPreferences) {
         users.add(newUser)
         preferences.saveUsers(users)
 
-        // Jadikan sesi aktif
-        preferences.setActiveSession(normalizedEmail, rememberMe)
-        Log.i(TAG, "Register success for user: $normalizedEmail")
+        // Generate JWT token untuk development (jika tidak disediakan dari backend)
+        val token = jwtToken ?: JwtHelper.generateDummyToken(
+            userId = JwtHelper.generateUserId(normalizedEmail),
+            email = normalizedEmail
+        )
+        
+        // Jadikan sesi aktif dengan JWT token
+        preferences.setActiveSession(normalizedEmail, rememberMe, token)
+        Log.i(TAG, "Register success for user: $normalizedEmail with JWT token")
         return AuthResult.Success(newUser)
     }
 
@@ -51,7 +59,8 @@ class AuthRepository(private val preferences: PantrickPreferences) {
     fun login(
         email: String,
         password: String,
-        rememberMe: Boolean = false
+        rememberMe: Boolean = false,
+        jwtToken: String? = null
     ): AuthResult {
         val normalizedEmail = User.normalizeEmail(email)
         val users = preferences.getUsers()
@@ -68,8 +77,14 @@ class AuthRepository(private val preferences: PantrickPreferences) {
             return AuthResult.Error("Kata sandi salah.")
         }
 
-        preferences.setActiveSession(normalizedEmail, rememberMe)
-        Log.i(TAG, "Login success for user: $normalizedEmail")
+        // Generate JWT token untuk development (jika tidak disediakan dari backend)
+        val token = jwtToken ?: JwtHelper.generateDummyToken(
+            userId = JwtHelper.generateUserId(normalizedEmail),
+            email = normalizedEmail
+        )
+        
+        preferences.setActiveSession(normalizedEmail, rememberMe, token)
+        Log.i(TAG, "Login success for user: $normalizedEmail with JWT token")
         return AuthResult.Success(existingUser)
     }
 
@@ -112,5 +127,10 @@ class AuthRepository(private val preferences: PantrickPreferences) {
 
     fun setProfileImagePath(email: String?, path: String?) {
         preferences.setProfileImagePath(email, path)
+    }
+
+    // [Materi: JWT Token] Mendapatkan token untuk API calls
+    fun getJwtToken(): String? {
+        return preferences.getJwtToken()
     }
 }

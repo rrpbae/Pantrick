@@ -32,6 +32,7 @@ class PantrickPreferences(context: Context) {
         private const val PREFS_NAME = "pantrick_local_prefs"
         private const val KEY_USERS = "registered_users"
         private const val KEY_PERSISTED_SESSION_EMAIL = "persisted_session_email"
+        private const val KEY_JWT_TOKEN = "jwt_token"
         private const val KEY_PANTRY_PREFIX = "pantry_"
         private const val KEY_EXPIRY_REMINDER_PREFIX = "expiry_reminder_"
         private const val KEY_PROFILE_IMAGE_PREFIX = "profile_image_"
@@ -40,6 +41,9 @@ class PantrickPreferences(context: Context) {
         // [Materi: In-Memory Session] Menyimpan sesi sementara jika "Ingat saya" tidak dicentang
         @Volatile
         private var inMemorySessionEmail: String? = null
+        
+        @Volatile
+        private var inMemoryJwtToken: String? = null
     }
 
     // ==================== PENGELOLAAN PENGGUNA ====================
@@ -93,24 +97,36 @@ class PantrickPreferences(context: Context) {
     }
 
     // [Materi: Fitur Ingat Saya] Menyimpan sesi ke persistent storage atau memori saja
-    fun setActiveSession(email: String?, rememberMe: Boolean) {
+    fun setActiveSession(email: String?, rememberMe: Boolean, jwtToken: String? = null) {
         if (email == null) {
             clearSession()
             return
         }
         val normalized = User.normalizeEmail(email)
         inMemorySessionEmail = normalized
+        inMemoryJwtToken = jwtToken
         if (rememberMe) {
             prefs.edit().putString(KEY_PERSISTED_SESSION_EMAIL, normalized).apply()
+            if (jwtToken != null) {
+                prefs.edit().putString(KEY_JWT_TOKEN, jwtToken).apply()
+            }
         } else {
             prefs.edit().remove(KEY_PERSISTED_SESSION_EMAIL).apply()
+            prefs.edit().remove(KEY_JWT_TOKEN).apply()
         }
+    }
+
+    // [Materi: JWT Token] Mengambil JWT token untuk API calls
+    fun getJwtToken(): String? {
+        return inMemoryJwtToken ?: prefs.getString(KEY_JWT_TOKEN, null)
     }
 
     // [Materi: Logout / Pembersihan Sesi] Menghapus sesi baik dari memori maupun SharedPreferences
     fun clearSession() {
         inMemorySessionEmail = null
+        inMemoryJwtToken = null
         prefs.edit().remove(KEY_PERSISTED_SESSION_EMAIL).apply()
+        prefs.edit().remove(KEY_JWT_TOKEN).apply()
     }
 
     // ==================== PENGELOLAAN BAHAN PANTRY PER USER ====================

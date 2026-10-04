@@ -29,11 +29,13 @@ import com.example.pantrick.ui.component.HomeHeader
 import com.example.pantrick.ui.viewmodel.IngredientSearchViewModel
 import com.example.pantrick.ui.viewmodel.SearchUiState
 import com.example.pantrick.ui.viewmodel.PantryViewModel
+import com.example.pantrick.util.IngredientNormalizer
 
 @Composable
 fun AddIngredientScreen(
     currentUser: User?,
     pantryViewModel: PantryViewModel? = null,
+    searchViewModel: IngredientSearchViewModel = viewModel(),
     savedRecipes: List<com.example.pantrick.data.model.Recipe> = emptyList(),
     onToggleSaveRecipe: (com.example.pantrick.data.model.Recipe) -> Unit = {},
     photoPath: String? = null,
@@ -44,27 +46,28 @@ fun AddIngredientScreen(
     contentPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier
 ) {
-    val searchViewModel: IngredientSearchViewModel = viewModel()
     val searchState by searchViewModel.searchState.collectAsState()
-
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedIngredients by remember { mutableStateOf(setOf<String>()) }
-
-    // Reset state ketika meninggalkan layar
-    DisposableEffect(Unit) {
-        onDispose { searchViewModel.resetSearch() }
-    }
 
     val userNameSafe = currentUser?.fullName ?: "Pengguna"
 
-    // Saran bahan populer (Bahasa Inggris, sesuai dataset) untuk mempermudah input
+    // Saran bahan populer — Bahasa Indonesia & Inggris, akan dinormalisasi ke English sebelum dikirim ke backend
     val popularSuggestions = remember {
         listOf(
+            // English (langsung cocok dengan dataset)
             "Chicken", "Beef", "Egg", "Onion", "Garlic", "Tomato", "Potato",
             "Rice", "Pasta", "Butter", "Milk", "Cheese", "Flour", "Sugar",
-            "Salt", "Oil", "Carrot", "Spinach", "Mushroom", "Shrimp"
-        ).sorted()
+            "Salt", "Oil", "Carrot", "Spinach", "Mushroom", "Shrimp",
+            "Black pepper", "Olive oil",
+            // Bahasa Indonesia (akan ditranslasi via IngredientNormalizer sebelum dikirim ke backend)
+            "Ayam", "Daging sapi", "Telur", "Bawang bombay", "Bawang putih",
+            "Tomat", "Kentang", "Nasi", "Mentega", "Susu", "Keju",
+            "Tepung", "Gula", "Garam", "Minyak goreng", "Wortel",
+            "Bayam", "Jamur", "Udang", "Lada hitam", "Minyak zaitun"
+        ).sortedBy { it.lowercase() }
     }
+
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedIngredients by remember { mutableStateOf(setOf<String>()) }
 
     val filteredSuggestions = remember(searchQuery, selectedIngredients) {
         if (searchQuery.isBlank()) emptyList()
@@ -301,7 +304,10 @@ fun AddIngredientScreen(
                 // TOMBOL CARI RESEP
                 Button(
                     onClick = {
-                        searchViewModel.searchRecommendations(selectedIngredients)
+                        // Normalisasi/terjemahkan bahan ke English (untuk dataset backend)
+                        // User bisa input "ayam" → dikirim ke backend sebagai "chicken"
+                        val normalizedForSearch = IngredientNormalizer.translateIngredientsForSearch(selectedIngredients).toSet()
+                        searchViewModel.searchRecommendations(normalizedForSearch)
                     },
                     enabled = selectedIngredients.isNotEmpty() && searchState !is SearchUiState.Loading,
                     colors = ButtonDefaults.buttonColors(

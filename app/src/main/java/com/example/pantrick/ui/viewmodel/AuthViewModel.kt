@@ -26,6 +26,15 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _profileImagePath = MutableStateFlow<String?>(authRepository.getProfileImagePath(authRepository.getCurrentUser()?.email))
     val profileImagePath: StateFlow<String?> = _profileImagePath.asStateFlow()
 
+    // [Materi: JWT Token] Expose JWT token untuk API calls yang memerlukan authentication
+    private val _jwtToken = MutableStateFlow<String?>(authRepository.getJwtToken())
+    val jwtToken: StateFlow<String?> = _jwtToken.asStateFlow()
+
+    // Fungsi helper untuk mendapatkan token (fallback jika null = gunakan dummy untuk development)
+    fun getJwtTokenOrEmpty(): String {
+        return _jwtToken.value ?: ""
+    }
+
     // [Materi: Login Handler] Memproses login dan memperbarui state sesi
     fun login(
         email: String,
@@ -38,6 +47,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             if (result is AuthResult.Success) {
                 _currentUser.value = result.user
                 _profileImagePath.value = authRepository.getProfileImagePath(result.user.email)
+                _jwtToken.value = authRepository.getJwtToken()
             }
             onResult(result)
         }
@@ -56,6 +66,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             if (result is AuthResult.Success) {
                 _currentUser.value = result.user
                 _profileImagePath.value = authRepository.getProfileImagePath(result.user.email)
+                _jwtToken.value = authRepository.getJwtToken()
             }
             onResult(result)
         }
@@ -66,6 +77,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         authRepository.logout()
         _currentUser.value = null
         _profileImagePath.value = null
+        _jwtToken.value = null
     }
 
     // [Materi: Initial Session Check] Memeriksa apakah ada sesi aktif saat app pertama kali dibuka

@@ -189,14 +189,30 @@ class RecommendationService(
         for (ing in recipe.ingredients) {
             val ingNorm = ing.normalizedName
 
+            // Improved matching: word boundary check or exact match
             val isMatched = pantryNormNames.any { pantryName ->
-                ingNorm.contains(pantryName) || pantryName.contains(ingNorm)
+                // Exact match
+                if (ingNorm == pantryName) return@any true
+                
+                // Word boundary match: avoid "rice" matching "licorice"
+                val ingWords = ingNorm.split(Regex("\\s+"))
+                val pantryWords = pantryName.split(Regex("\\s+"))
+                
+                // Check if pantryName is a word in ingredient (e.g., "chicken" in "chicken breast")
+                ingWords.any { it == pantryName } || 
+                // Check if ingredient is a word in pantryName (e.g., "breast" in "chicken breast")
+                pantryWords.any { it == ingNorm } ||
+                // Fuzzy match for close variations (e.g., "tomato" vs "tomatoes")
+                isFuzzyMatch(ingNorm, pantryName)
             }
 
             if (isMatched) {
                 matchedIngredients.add(ing.displayName)
                 if (expiringNormNames.any { expName ->
-                        ingNorm.contains(expName) || expName.contains(ingNorm)
+                        val expWords = expName.split(Regex("\\s+"))
+                        ingNorm.split(Regex("\\s+")).any { it == expName } ||
+                        expWords.any { it == ingNorm } ||
+                        isFuzzyMatch(ingNorm, expName)
                     }) {
                     usesExpiring = true
                 }
@@ -236,6 +252,49 @@ class RecommendationService(
             usesExpiringItems = usesExpiring,
             score = score
         )
+    }
+    
+    /**
+     * Fuzzy match untuk menangani plural/singular dan typo kecil.
+     * Contoh: "tomato" matches "tomatoes", "chicken" matches "chickens"
+     */
+    private fun isFuzzyMatch(a: String, b: String): Boolean {
+        // Handle plural: remove trailing 's', 'es'
+        val aStem = a.removeSuffix("es").removeSuffix("s")
+        val bStem = b.removeSuffix("es").removeSuffix("s")
+        
+        if (aStem == bStem) return true
+        
+        // Levenshtein distance for close matches
+        val distance = levenshteinDistance(a, b)
+        val maxLen = maxOf(a.length, b.length)
+        if (maxLen == 0) return false
+        
+        val similarity = 1.0 - (distance.toDouble() / maxLen)
+        return similarity >= 0.85 // 85% similarity threshold
+    }
+    
+    /**
+     * Calculate Levenshtein distance between two strings.
+     */
+    private fun levenshteinDistance(a: String, b: String): Int {
+        val costs = IntArray(b.length + 1) { it }
+        
+        for (i in 1..a.length) {
+            var lastValue = i
+            for (j in 1..b.length) {
+                val newValue = if (a[i - 1] == b[j - 1]) {
+                    costs[j - 1]
+                } else {
+                    1 + minOf(costs[j - 1], costs[j], lastValue)
+                }
+                costs[j - 1] = lastValue
+                lastValue = newValue
+            }
+            costs[b.length] = lastValue
+        }
+        
+        return costs[b.length]
     }
 
     /**

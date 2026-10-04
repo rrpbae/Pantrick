@@ -2,8 +2,7 @@
 package com.example.pantrick.core.network
 
 object PantrickApiConfig {
-    // Ganti ke IP LAN atau host production jika perlu
-    // Untuk emulator Android, gunakan 10.0.2.2 (loopback host)
-    // Untuk device fisik, gunakan IP LAN PC yang menjalankan backend
-    const val BASE_URL = "http://10.0.2.2:8081"
+    // Untuk physical device via USB debugging + ADB reverse (adb reverse tcp:8081 tcp:8081),
+    // atau untuk Android emulator: gunakan 127.0.0.1:8081
+    const val BASE_URL = "http://127.0.0.1:8081"
 }

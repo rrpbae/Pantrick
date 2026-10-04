@@ -2,6 +2,7 @@ package com.pantrick.backend
 
 import com.pantrick.backend.models.ErrorResponse
 import com.pantrick.backend.repository.InMemoryCookingHistoryRepository
+import com.pantrick.backend.repository.InMemoryCookingSessionRepository
 import com.pantrick.backend.repository.InMemoryPantryRepository
 import com.pantrick.backend.repository.InMemoryPasswordResetTokenRepository
 import com.pantrick.backend.repository.InMemoryRecipeRepository
@@ -21,6 +22,8 @@ import com.pantrick.backend.routes.profileRoutes
 import com.pantrick.backend.routes.recipeRoutes
 import com.pantrick.backend.routes.recommendationRoutes
 import com.pantrick.backend.routes.savedRecipeRoutes
+import com.pantrick.backend.routes.cookingSessionRoutes
+import com.pantrick.backend.service.CookingSessionService
 import com.pantrick.backend.service.HomeService
 import com.pantrick.backend.service.NotificationService
 import com.pantrick.backend.service.PantryService
@@ -68,6 +71,7 @@ fun Application.module(
     }
 
     val cookingHistoryRepo = InMemoryCookingHistoryRepository()
+    val cookingSessionRepo = InMemoryCookingSessionRepository()
     val shoppingListRepo = InMemoryShoppingListRepository()
     val passwordResetTokenRepository = InMemoryPasswordResetTokenRepository()
     val actualPasswordResetService = passwordResetService ?: PasswordResetService(userRepository, passwordResetTokenRepository)
@@ -78,6 +82,7 @@ fun Application.module(
     val recommendationService = RecommendationService(actualRecipeRepo, pantryRepository, savedRecipeRepository)
     val notificationService = NotificationService(pantryRepository)
     val profileService = ProfileService(userRepository)
+    val cookingSessionService = CookingSessionService(actualRecipeRepo, pantryRepository, cookingSessionRepo)
     val savedRecipeService = SavedRecipeService(
         savedRecipeRepository = savedRecipeRepository,
         recipeRepository = actualRecipeRepo,
@@ -116,6 +121,7 @@ fun Application.module(
         // agar rute spesifik tidak tertangkap oleh /{id}
         recommendationRoutes(recommendationService)
         savedRecipeRoutes(savedRecipeService)
+        cookingSessionRoutes(cookingSessionService)
         recipeRoutes(recipeService)
         homeRoutes(homeService)
         pantryRoutes(pantryService)

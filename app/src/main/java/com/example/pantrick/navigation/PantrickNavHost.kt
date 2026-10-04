@@ -38,13 +38,14 @@ import com.example.pantrick.ui.screen.EditIngredientScreen
 import com.example.pantrick.ui.screen.EditProfileScreen
 import com.example.pantrick.ui.screen.HomeScreen
 import com.example.pantrick.ui.screen.LoginScreen
-import com.example.pantrick.ui.screen.NotificationScreen
+import com.example.pantrick.ui.screen.NotificationScreenBackend
 import com.example.pantrick.ui.screen.PantryScreen
 import com.example.pantrick.ui.screen.ProfileScreen
 import com.example.pantrick.ui.screen.SignUpScreen
 import com.example.pantrick.ui.screen.RecipesScreen
 import com.example.pantrick.ui.screen.RecipeDetailScreen
 import com.example.pantrick.ui.viewmodel.AuthViewModel
+import com.example.pantrick.ui.viewmodel.IngredientSearchViewModel
 import com.example.pantrick.ui.viewmodel.PantryViewModel
 import com.example.pantrick.ui.viewmodel.RecipeViewModel
 
@@ -56,10 +57,14 @@ fun PantrickNavHost(
     authViewModel: AuthViewModel = viewModel(),
     pantryViewModel: PantryViewModel = viewModel(),
     recipeViewModel: RecipeViewModel = viewModel(),
+    // IngredientSearchViewModel di-share antara AddIngredientScreen dan RecipeDetailScreen
+    // agar back navigation dari detail ke recommendation list tidak mereset state pencarian
+    ingredientSearchViewModel: IngredientSearchViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     val photoPath by authViewModel.profileImagePath.collectAsState()
+    val jwtToken by authViewModel.jwtToken.collectAsState()
     val pantryItems by pantryViewModel.items.collectAsState()
     val savedRecipes by recipeViewModel.savedRecipes.collectAsState()
 
@@ -216,6 +221,7 @@ fun PantrickNavHost(
                 AddIngredientScreen(
                     currentUser = currentUser,
                     pantryViewModel = pantryViewModel,
+                    searchViewModel = ingredientSearchViewModel,
                     photoPath = photoPath,
                     onNavigateBack = { navController.popBackStack() },
                     onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
@@ -228,8 +234,8 @@ fun PantrickNavHost(
             }
 
             composable<NotificationRoute> {
-                NotificationScreen(
-                    items = pantryItems,
+                NotificationScreenBackend(
+                    jwtToken = jwtToken ?: "",
                     onNavigateBack = { navController.popBackStack() },
                     contentPadding = innerPadding
                 )
@@ -268,6 +274,13 @@ fun PantrickNavHost(
                     recipeId = detailRoute.recipeId,
                     savedRecipes = savedRecipes,
                     pantryItems = pantryItems,
+                    jwtToken = jwtToken ?: "",
+                    viewModel = ingredientSearchViewModel,
+                    recipeViewModel = recipeViewModel,
+                    onPantryRefresh = {
+                        // Refresh pantry setelah cooking session
+                        pantryViewModel.loadItemsForUser(currentUser?.email)
+                    },
                     contentPadding = innerPadding,
                     onNavigateBack = {
                         navController.popBackStack()
