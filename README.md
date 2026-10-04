@@ -28,12 +28,12 @@ cd Pantrick
 
 Dataset **TIDAK** disimpan di repository GitHub karena ukurannya besar. Download dataset secara terpisah:
 
-**Download Link**: [LINK DATASET DI SINI]
+**Download Link**: https://drive.google.com/drive/folders/1d15XgM7fJr4IlkJe_xXXyahyuBlYNzmK?usp=drive_link
 
 Setelah download:
 
-1. Extract file dataset
-2. Letakkan folder `Dataset_Resep` di **root project Pantrick**
+1. Buat folder bernama Dataset_Resep di dalam folder Pantrick
+2. Masukan semua dataset di dalam gdrive ke dalam folder Dataset_Resep
 
 Struktur folder harus seperti ini:
 
