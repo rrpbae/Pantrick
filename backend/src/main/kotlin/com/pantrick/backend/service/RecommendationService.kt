@@ -43,12 +43,6 @@ class RecommendationService(
             return Pair(emptyList(), 0)
         }
 
-        // Normalisasi nama bahan pantry user
-        val pantryNormNames: Set<String> = userPantryItems
-            .map { it.normalizedName.ifBlank { IngredientParser.normalizeIngredientName(it.name) } }
-            .filter { it.isNotBlank() }
-            .toSet()
-
         // Normalisasi nama bahan yang hampir kadaluarsa
         val expiringNormNames: Set<String> = expiringItems
             .map { IngredientParser.normalizeIngredientName(it.ingredientName) }
@@ -80,8 +74,8 @@ class RecommendationService(
                 continue
             }
 
-            // 3. Match terhadap pantry user
-            val result = matchRecipeAgainstPantry(recipe, pantryNormNames, expiringNormNames, userId)
+            // 3. Match terhadap pantry user (FIXED: pass full pantryItems instead of just names)
+            val result = matchRecipeAgainstPantry(recipe, userPantryItems, expiringNormNames, userId)
 
             // 4. Mode filter: "ready", "quick", "all"
             when (filter.lowercase()) {
@@ -94,7 +88,7 @@ class RecommendationService(
             }
 
             // Jika pantry tidak kosong dan tidak ada query search, hanya ambil yang minimal 1 match
-            if (pantryNormNames.isNotEmpty() && result.matchedCount == 0 && normSearchQuery.isNullOrBlank()) {
+            if (userPantryItems.isNotEmpty() && result.matchedCount == 0 && normSearchQuery.isNullOrBlank()) {
                 continue
             }
 
@@ -175,65 +169,79 @@ class RecommendationService(
 
     /**
      * Mencocokkan satu recipe terhadap pantry user dan mengembalikan DTO RecipeRecommendation.
+     * 
+     * UPDATED: Sekarang mengecek BOTH nama bahan DAN quantity.
+     * Status READY hanya jika SEMUA bahan tersedia DAN quantity mencukupi.
      */
     internal fun matchRecipeAgainstPantry(
         recipe: Recipe,
-        pantryNormNames: Set<String>,
+        pantryItems: List<com.pantrick.backend.models.PantryItem>,
         expiringNormNames: Set<String> = emptySet(),
         userId: Int = 0
     ): RecipeRecommendation {
+        
         val matchedIngredients = mutableListOf<String>()
         val missingIngredients = mutableListOf<String>()
         var usesExpiring = false
+        
+        var fullyAvailableCount = 0  // Bahan yang nama DAN quantity-nya cukup
 
         for (ing in recipe.ingredients) {
             val ingNorm = ing.normalizedName
 
-            // Improved matching: word boundary check or exact match
-            val isMatched = pantryNormNames.any { pantryName ->
-                // Exact match
-                if (ingNorm == pantryName) return@any true
-                
-                // Word boundary match: avoid "rice" matching "licorice"
-                val ingWords = ingNorm.split(Regex("\\s+"))
-                val pantryWords = pantryName.split(Regex("\\s+"))
-                
-                // Check if pantryName is a word in ingredient (e.g., "chicken" in "chicken breast")
-                ingWords.any { it == pantryName } || 
-                // Check if ingredient is a word in pantryName (e.g., "breast" in "chicken breast")
-                pantryWords.any { it == ingNorm } ||
-                // Fuzzy match for close variations (e.g., "tomato" vs "tomatoes")
-                isFuzzyMatch(ingNorm, pantryName)
-            }
-
-            if (isMatched) {
-                matchedIngredients.add(ing.displayName)
-                if (expiringNormNames.any { expName ->
-                        val expWords = expName.split(Regex("\\s+"))
-                        ingNorm.split(Regex("\\s+")).any { it == expName } ||
-                        expWords.any { it == ingNorm } ||
-                        isFuzzyMatch(ingNorm, expName)
-                    }) {
-                    usesExpiring = true
+            // Find matching pantry item
+            val matchedPantry = pantryItems
+                .filter { !it.isConsumed && it.quantity > 0 }
+                .firstOrNull { pantry ->
+                    val pNorm = pantry.normalizedName.ifBlank { 
+                        IngredientParser.normalizeIngredientName(pantry.name) 
+                    }
+                    IngredientMatchingService.isIngredientMatch(ingNorm, pNorm)
                 }
-            } else {
+
+            if (matchedPantry == null) {
+                // Nama bahan tidak ditemukan di pantry
                 missingIngredients.add(ing.displayName)
+            } else {
+                // Nama bahan ditemukan, cek quantity
+                val qtyComparison = QuantityComparisonService.compareQuantities(
+                    recipeQty = ing.quantity,
+                    recipeUnit = ing.unit,
+                    pantryQty = matchedPantry.quantity,
+                    pantryUnit = matchedPantry.unit
+                )
+                
+                if (qtyComparison.isSufficient) {
+                    // Bahan tersedia DAN quantity cukup
+                    matchedIngredients.add(ing.displayName)
+                    fullyAvailableCount++
+                    
+                    // Check if using expiring item
+                    if (expiringNormNames.any { expName ->
+                            IngredientMatchingService.isIngredientMatch(ingNorm, expName)
+                        }) {
+                        usesExpiring = true
+                    }
+                } else {
+                    // Bahan tersedia tapi quantity TIDAK cukup
+                    missingIngredients.add(ing.displayName)
+                }
             }
         }
 
         val totalIngredients = recipe.ingredients.size
-        val matchedCount = matchedIngredients.size
         val matchPercentage = if (totalIngredients > 0) {
-            ((matchedCount.toDouble() / totalIngredients.toDouble()) * 100.0).roundTo(1)
+            ((fullyAvailableCount.toDouble() / totalIngredients.toDouble()) * 100.0).roundTo(1)
         } else 0.0
 
-        var score = matchPercentage + (matchedCount * 5.0)
+        var score = matchPercentage + (fullyAvailableCount * 5.0)
         if (usesExpiring) score += 20.0
         score = score.roundTo(1)
 
+        // Status calculation: READY hanya jika SEMUA bahan quantity-nya cukup
         val status = when {
             missingIngredients.isEmpty() && totalIngredients > 0 -> RecipeReadinessStatus.READY
-            matchedCount > 0 -> RecipeReadinessStatus.PARTIAL
+            fullyAvailableCount > 0 -> RecipeReadinessStatus.PARTIAL
             else -> RecipeReadinessStatus.NOT_READY
         }
 
@@ -244,7 +252,7 @@ class RecommendationService(
             matchedIngredients = matchedIngredients,
             missingIngredients = missingIngredients,
             matchPercentage = matchPercentage,
-            matchedCount = matchedCount,
+            matchedCount = fullyAvailableCount,  // Hanya hitung yang quantity-nya cukup
             totalIngredients = totalIngredients,
             missingIngredientCount = missingIngredients.size,
             status = status,
@@ -253,53 +261,12 @@ class RecommendationService(
             score = score
         )
     }
-    
-    /**
-     * Fuzzy match untuk menangani plural/singular dan typo kecil.
-     * Contoh: "tomato" matches "tomatoes", "chicken" matches "chickens"
-     */
-    private fun isFuzzyMatch(a: String, b: String): Boolean {
-        // Handle plural: remove trailing 's', 'es'
-        val aStem = a.removeSuffix("es").removeSuffix("s")
-        val bStem = b.removeSuffix("es").removeSuffix("s")
-        
-        if (aStem == bStem) return true
-        
-        // Levenshtein distance for close matches
-        val distance = levenshteinDistance(a, b)
-        val maxLen = maxOf(a.length, b.length)
-        if (maxLen == 0) return false
-        
-        val similarity = 1.0 - (distance.toDouble() / maxLen)
-        return similarity >= 0.85 // 85% similarity threshold
-    }
-    
-    /**
-     * Calculate Levenshtein distance between two strings.
-     */
-    private fun levenshteinDistance(a: String, b: String): Int {
-        val costs = IntArray(b.length + 1) { it }
-        
-        for (i in 1..a.length) {
-            var lastValue = i
-            for (j in 1..b.length) {
-                val newValue = if (a[i - 1] == b[j - 1]) {
-                    costs[j - 1]
-                } else {
-                    1 + minOf(costs[j - 1], costs[j], lastValue)
-                }
-                costs[j - 1] = lastValue
-                lastValue = newValue
-            }
-            costs[b.length] = lastValue
-        }
-        
-        return costs[b.length]
-    }
 
     /**
      * Menghasilkan rekomendasi berdasarkan daftar nama bahan yang dikirim langsung (tidak memerlukan pantry user).
      * Digunakan oleh endpoint search-by-ingredients tanpa autentikasi.
+     * 
+     * UPDATED: Sekarang juga mengecek quantity jika tersedia di pantry reference.
      */
     fun getRecommendationsByIngredientNames(
         ingredientNames: List<String>,
@@ -323,8 +290,56 @@ class RecommendationService(
 
         for (recipe in allRecipes) {
             if (recipe.ingredients.isEmpty()) continue
-            val rec = matchRecipeAgainstPantry(recipe, normNames)
-            if (rec.matchedCount > 0) {
+            
+            // For search-by-ingredients, we only check name matching (no quantity)
+            // because user didn't provide pantry quantities
+            val matchedIngredients = mutableListOf<String>()
+            val missingIngredients = mutableListOf<String>()
+            
+            for (ing in recipe.ingredients) {
+                val ingNorm = ing.normalizedName
+                
+                val isMatched = normNames.any { providedName ->
+                    IngredientMatchingService.isIngredientMatch(ingNorm, providedName)
+                }
+                
+                if (isMatched) {
+                    matchedIngredients.add(ing.displayName)
+                } else {
+                    missingIngredients.add(ing.displayName)
+                }
+            }
+            
+            val matchedCount = matchedIngredients.size
+            val totalIngredients = recipe.ingredients.size
+            
+            if (matchedCount > 0) {
+                val matchPercentage = if (totalIngredients > 0) {
+                    ((matchedCount.toDouble() / totalIngredients.toDouble()) * 100.0).roundTo(1)
+                } else 0.0
+                
+                val score = matchPercentage + (matchedCount * 5.0)
+                
+                val status = when {
+                    missingIngredients.isEmpty() && totalIngredients > 0 -> RecipeReadinessStatus.READY
+                    matchedCount > 0 -> RecipeReadinessStatus.PARTIAL
+                    else -> RecipeReadinessStatus.NOT_READY
+                }
+                
+                val rec = RecipeRecommendation(
+                    recipe = recipe,
+                    matchedIngredients = matchedIngredients,
+                    missingIngredients = missingIngredients,
+                    matchPercentage = matchPercentage,
+                    matchedCount = matchedCount,
+                    totalIngredients = totalIngredients,
+                    missingIngredientCount = missingIngredients.size,
+                    status = status,
+                    isSaved = false,
+                    usesExpiringItems = false,
+                    score = score
+                )
+                
                 results.add(rec)
             }
         }

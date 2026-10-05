@@ -26,7 +26,9 @@ data class Recipe(
     val readyCount: Int = 0,
     val totalCount: Int = 0,
     val missingIngredient: String = "",
-    @get:DrawableRes val imageRes: Int = R.drawable.ic_placeholder_pasta,
+    val imageName: String? = null,  // Image name from backend dataset
+    val hasImage: Boolean = false,  // Whether recipe has an image
+    @get:DrawableRes val imageRes: Int = R.drawable.ic_placeholder_pasta,  // Fallback for old data
     val savedAtEpochMillis: Long = 0L,
     val ingredients: List<RecipeIngredient> = emptyList(),
     val steps: List<String> = emptyList()

@@ -43,7 +43,10 @@ fun NotificationScreenBackend(
 
     LaunchedEffect(jwtToken) {
         if (jwtToken.isNotBlank()) {
+            println("[NOTIF UI] Bell screen opened, loading notifications...")
             viewModel.loadNotifications(jwtToken)
+        } else {
+            println("[NOTIF UI] Bell screen opened but JWT token is blank!")
         }
     }
 

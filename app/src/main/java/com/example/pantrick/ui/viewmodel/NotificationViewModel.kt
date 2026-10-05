@@ -34,23 +34,31 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
     fun loadNotifications(token: String) {
         viewModelScope.launch {
             _uiState.value = NotificationUiState.Loading
-            Log.d(TAG, "Loading notifications...")
+            Log.d(TAG, "[NOTIF UI] Loading notifications with token...")
+            println("[NOTIF UI] Loading notifications...")
 
             val result = repository.getNotifications(token)
             _uiState.value = result.fold(
                 onSuccess = { response ->
                     if (response.success) {
-                        Log.d(TAG, "Loaded ${response.notifications.size} notifications, unread=${response.unreadCount}")
+                        Log.d(TAG, "[NOTIF UI] Loaded ${response.notifications.size} notifications, unread=${response.unreadCount}")
+                        println("[NOTIF UI] SUCCESS: ${response.notifications.size} notifications, unread=${response.unreadCount}")
+                        response.notifications.forEachIndexed { index, notif ->
+                            println("[NOTIF UI] [$index] ${notif.name}: ${notif.message} (days=${notif.daysRemaining}, priority=${notif.priority})")
+                        }
                         NotificationUiState.Success(
                             notifications = response.notifications,
                             unreadCount = response.unreadCount
                         )
                     } else {
+                        println("[NOTIF UI] ERROR: Backend returned success=false, message=${response.message}")
                         NotificationUiState.Error(response.message.ifBlank { "Gagal memuat notifikasi" })
                     }
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to load notifications", error)
+                    Log.e(TAG, "[NOTIF UI] Failed to load notifications", error)
+                    println("[NOTIF UI] EXCEPTION: ${error.message}")
+                    error.printStackTrace()
                     NotificationUiState.Error("Gagal memuat notifikasi")
                 }
             )

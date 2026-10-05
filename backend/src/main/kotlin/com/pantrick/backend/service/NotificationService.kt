@@ -34,23 +34,40 @@ class NotificationService(
         val userItems = pantryRepository.getItemsByUserId(userId)
         val notifications = mutableListOf<NotificationItem>()
 
+        println("[GET NOTIFICATIONS] userId=$userId, nowDate=$nowDate, itemCount=${userItems.size}")
+
         for (item in userItems) {
+            println("[EXPIRY] Checking item: id=${item.id}, name=${item.name}, userId=${item.userId}, quantity=${item.quantity}, isConsumed=${item.isConsumed}, expirationDate=${item.expirationDate}")
+            
             // Skip bahan yang sudah habis
-            if (item.isConsumed || item.quantity <= 0.0) continue
+            if (item.isConsumed || item.quantity <= 0.0) {
+                println("[EXPIRY] SKIP: item ${item.name} is consumed or quantity=0")
+                continue
+            }
 
             val dateStr = item.expirationDate
-            if (dateStr.isNullOrBlank()) continue
+            if (dateStr.isNullOrBlank()) {
+                println("[EXPIRY] SKIP: item ${item.name} has no expirationDate")
+                continue
+            }
 
             val expDate = try {
                 LocalDate.parse(dateStr)
             } catch (e: Exception) {
+                println("[EXPIRY] SKIP: item ${item.name} has invalid expirationDate format: $dateStr")
                 continue
             }
 
             val daysRemaining = java.time.temporal.ChronoUnit.DAYS.between(nowDate, expDate)
 
+            println("[EXPIRY] userId=$userId, ingredient=${item.name}, expirationDate=$dateStr, daysRemaining=$daysRemaining")
+
             // Tentukan tipe notifikasi dan apakah harus muncul hari ini
-            val notifType = determineNotifType(daysRemaining) ?: continue
+            val notifType = determineNotifType(daysRemaining)
+            if (notifType == null) {
+                println("[EXPIRY] SKIP: item ${item.name} daysRemaining=$daysRemaining doesn't match notification rules")
+                continue
+            }
 
             // Cek dedup — hanya kirim sekali per hari per tipe per item
             val dedupKey = "${item.id}-${notifType}"
@@ -74,6 +91,8 @@ class NotificationService(
             val isRead = readStateMap[notificationId] ?: false
             val message = formatNotificationMessage(item.name, daysRemaining)
 
+            println("[NOTIFICATION] notificationCreated=true, notificationId=$notificationId, userId=$userId, type=$notifType, message=$message")
+
             notifications.add(
                 NotificationItem(
                     id = notificationId,
@@ -92,6 +111,8 @@ class NotificationService(
 
         val sorted = notifications.sortedWith(compareBy({ it.daysRemaining }, { it.name }))
         val unreadCount = sorted.count { !it.isRead }
+
+        println("[GET NOTIFICATIONS] userId=$userId, count=${sorted.size}, unreadCount=$unreadCount")
 
         return NotificationListResponse(
             success = true,

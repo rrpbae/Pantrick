@@ -17,3 +17,6 @@ local.properties
 /backend/build/
 /.kotlin/
 /.idea/
+
+# Dataset - DO NOT PUSH TO GITHUB
+/Dataset_Resep/

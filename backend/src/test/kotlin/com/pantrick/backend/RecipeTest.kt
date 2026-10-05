@@ -31,15 +31,21 @@ class RecipeTest {
         val ingredients = IngredientParser.parseIngredientsList(rawInput)
 
         assertEquals(3, ingredients.size)
+        
+        // First ingredient: "1 cup milk"
         assertEquals("1 cup milk", ingredients[0].displayName)
         assertEquals("1 cup milk", ingredients[0].raw)
-        assertEquals("1 cup milk", ingredients[0].normalizedName)
+        // UPDATED: normalizedName should be only the ingredient name part "milk", not "1 cup milk"
+        assertEquals("milk", ingredients[0].normalizedName)
         assertEquals("1", ingredients[0].quantity)
         assertEquals("cup", ingredients[0].unit)
 
+        // Second ingredient: "2¾ tsp. kosher salt"
         assertEquals("2¾ tsp. kosher salt", ingredients[1].raw)
         assertEquals("2¾", ingredients[1].quantity)
         assertEquals("tsp.", ingredients[1].unit)
+        // UPDATED: normalizedName should be "kosher salt", not full string
+        assertEquals("kosher salt", ingredients[1].normalizedName)
 
         val normalized = IngredientParser.normalizeIngredientName("  Whole   Milk!! ")
         assertEquals("whole milk", normalized)

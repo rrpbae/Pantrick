@@ -64,9 +64,12 @@ fun RecipeDetailScreen(
         Log.d(TAG_DETAIL, "LaunchedEffect: loadRecipeDetail($recipeId)")
         viewModel.loadRecipeDetail(recipeId)
         
-        // Check if there's an active cooking session for this recipe
         if (jwtToken.isNotBlank()) {
+            // Check if there's an active cooking session for this recipe
             cookingViewModel.resumeActiveSession(recipeId, jwtToken)
+            
+            // Auto-check readiness when opening recipe detail
+            cookingViewModel.checkReadiness(recipeId, jwtToken)
         }
     }
     
@@ -234,6 +237,8 @@ fun RecipeDetailScreen(
                                     Recipe(
                                         id = recipe.id,
                                         title = recipe.title,
+                                        imageName = recipe.imageName,
+                                        hasImage = recipe.hasImage,
                                         savedAtEpochMillis = System.currentTimeMillis()
                                     )
                                 )

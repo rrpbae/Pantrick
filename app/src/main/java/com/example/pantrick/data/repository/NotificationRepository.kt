@@ -21,14 +21,19 @@ class NotificationRepository {
     /** Ambil semua notifikasi ekspirasi bahan untuk user yang sedang login */
     suspend fun getNotifications(token: String): Result<NotificationListResponse> {
         return try {
+            println("[NOTIF API] Sending GET /api/notifications...")
             val resp = client.get("$base/api/notifications") {
                 header(HttpHeaders.Authorization, "Bearer $token")
             }
+            println("[NOTIF API] Response HTTP ${resp.status.value}")
             val dto = resp.body<NotificationListResponse>()
-            Log.d(TAG, "getNotifications: unreadCount=${dto.unreadCount} total=${dto.notifications.size}")
+            Log.d(TAG, "[NOTIF API] getNotifications: unreadCount=${dto.unreadCount} total=${dto.notifications.size}")
+            println("[NOTIF API] Raw response: success=${dto.success}, message=${dto.message}, count=${dto.notifications.size}")
             Result.success(dto)
         } catch (e: Exception) {
-            Log.e(TAG, "getNotifications failed", e)
+            Log.e(TAG, "[NOTIF API] getNotifications failed", e)
+            println("[NOTIF API] EXCEPTION: ${e.message}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }

@@ -38,9 +38,17 @@ class SavedRecipeService(
 
     fun getSavedRecipes(userId: Int): List<Recipe> {
         val savedList = savedRecipeRepository.getSavedRecipesByUserId(userId)
-        return savedList.mapNotNull { saved ->
+        val recipes = savedList.mapNotNull { saved ->
             recipeRepository.getRecipeById(saved.recipeId)
         }
+        
+        // DEBUG LOG for saved recipe images
+        println("DEBUG [getSavedRecipes] Returning ${recipes.size} saved recipes for user $userId")
+        recipes.forEach { recipe ->
+            println("DEBUG [getSavedRecipes]   Recipe: id='${recipe.id}', title='${recipe.title}', imageName='${recipe.imageName}', hasImage=${recipe.hasImage}")
+        }
+        
+        return recipes
     }
 
     // --- COLLECTIONS ---

@@ -122,13 +122,17 @@ fun Route.pantryRoutes(pantryService: PantryService) {
 
             // POST /api/pantry/items
             post {
+                println("[PANTRY ROUTE] POST /api/pantry/items called")
                 val userId = call.getAuthenticatedUserId() ?: return@post call.respond(
                     HttpStatusCode.Unauthorized,
                     ErrorResponse(success = false, message = "Token autentikasi tidak valid atau belum disediakan")
                 )
 
+                println("[PANTRY ROUTE] User authenticated: userId=$userId")
+                
                 val request = runCatching { call.receive<CreatePantryItemRequest>() }.getOrNull()
                 if (request == null) {
+                    println("[PANTRY ROUTE] Invalid request body")
                     call.respond(
                         HttpStatusCode.BadRequest,
                         ErrorResponse(success = false, message = "Body request tidak valid")
@@ -136,8 +140,11 @@ fun Route.pantryRoutes(pantryService: PantryService) {
                     return@post
                 }
 
+                println("[PANTRY ROUTE] Request received: name=${request.name}, expirationDate=${request.expirationDate}")
+
                 try {
                     val createdItem = pantryService.createPantryItem(userId, request)
+                    println("[PANTRY ROUTE] Item created: id=${createdItem.id}, name=${createdItem.name}, expirationDate=${createdItem.expirationDate}")
                     call.respond(
                         HttpStatusCode.Created,
                         PantryItemSingleResponse(
@@ -147,6 +154,7 @@ fun Route.pantryRoutes(pantryService: PantryService) {
                         )
                     )
                 } catch (e: IllegalArgumentException) {
+                    println("[PANTRY ROUTE] Validation error: ${e.message}")
                     call.respond(
                         HttpStatusCode.BadRequest,
                         ErrorResponse(success = false, message = e.message ?: "Validasi data gagal")

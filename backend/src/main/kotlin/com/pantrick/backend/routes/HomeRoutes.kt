@@ -25,16 +25,29 @@ private val jwtVerifier = JWT.require(Algorithm.HMAC256(jwtSecret))
     .build()
 
 fun ApplicationCall.getAuthenticatedUserId(): Int? {
-    val authHeader = request.headers["Authorization"] ?: return null
-    if (!authHeader.startsWith("Bearer ", ignoreCase = true)) return null
+    val authHeader = request.headers["Authorization"]
+    if (authHeader == null) {
+        println("[AUTH] No Authorization header found")
+        return null
+    }
+    if (!authHeader.startsWith("Bearer ", ignoreCase = true)) {
+        println("[AUTH] Authorization header doesn't start with 'Bearer '")
+        return null
+    }
 
     val token = authHeader.substring(7).trim()
-    if (token.isBlank()) return null
+    if (token.isBlank()) {
+        println("[AUTH] Token is blank")
+        return null
+    }
 
     return try {
         val decodedJwt = jwtVerifier.verify(token)
-        decodedJwt.subject.toIntOrNull()
+        val userId = decodedJwt.subject.toIntOrNull()
+        println("[AUTH] JWT decoded successfully: userId=$userId")
+        userId
     } catch (e: Exception) {
+        println("[AUTH] JWT verification failed: ${e.message}")
         null
     }
 }

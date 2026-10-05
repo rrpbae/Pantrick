@@ -22,18 +22,17 @@ object IngredientParser {
     fun parseSingleIngredient(raw: String): RecipeIngredient {
         val trimmedRaw = raw.trim()
         val displayName = trimmedRaw
-        val normalizedName = normalizeIngredientName(trimmedRaw)
 
         val (quantity, remainderAfterQty) = extractQuantity(trimmedRaw)
-        if (quantity == null) {
-            return RecipeIngredient(
-                raw = trimmedRaw,
-                displayName = displayName,
-                normalizedName = normalizedName
-            )
-        }
-
         val (unit, remainderAfterUnit) = extractUnit(remainderAfterQty)
+        
+        // FIX: Normalize only the ingredient name part (after quantity and unit extraction)
+        // For "1 (3 1/2–4-lb.) chicken", we want normalizedName = "chicken", not "1 3 1 2 4 lb chicken"
+        val ingredientNamePart = remainderAfterUnit.ifBlank { 
+            remainderAfterQty.ifBlank { trimmedRaw } 
+        }
+        val normalizedName = normalizeIngredientName(ingredientNamePart)
+
         return RecipeIngredient(
             raw = trimmedRaw,
             displayName = displayName,

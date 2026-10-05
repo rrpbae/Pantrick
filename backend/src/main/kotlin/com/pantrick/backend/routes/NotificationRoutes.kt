@@ -16,12 +16,15 @@ fun Route.notificationRoutes(notificationService: NotificationService) {
 
         // GET /api/notifications
         get {
+            println("[NOTIFICATION ROUTE] GET /api/notifications called")
             val userId = call.getAuthenticatedUserId() ?: return@get call.respond(
                 HttpStatusCode.Unauthorized,
                 ErrorResponse(success = false, message = "Token autentikasi tidak valid atau belum disediakan")
             )
 
+            println("[NOTIFICATION ROUTE] User authenticated: userId=$userId")
             val response = notificationService.getNotifications(userId)
+            println("[NOTIFICATION ROUTE] Sending response: ${response.notifications.size} notifications")
             call.respond(HttpStatusCode.OK, response)
         }
 

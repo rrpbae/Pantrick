@@ -202,14 +202,29 @@ class RecommendationTest {
         val (recs, _) = service.getRecommendations(userId = 1, limit = 10)
         assertTrue(recs.isNotEmpty())
 
-        // rec-002 (Chicken Garlic Stir Fry): chicken, garlic, butter → semua ada di pantry user 1
+        // rec-002 (Chicken Garlic Stir Fry): 500g chicken breast, 3 cloves garlic, 2 tbsp butter
+        // Pantry user 1: Chicken Breast (1 unit), Garlic (1 unit), Butter (1 unit)
+        // UPDATED BEHAVIOR (after IngredientParser fix):
+        // - "500g chicken breast" → normalizedName = "chicken breast" (not "500g chicken breast")
+        // - This NOW MATCHES pantry "Chicken Breast" ✅
+        // - Quantity: pantry has "1 unit" → special case = sufficient ✅
+        // - All 3 ingredients match!
         val chickenRec = recs.firstOrNull { it.recipe.id == "rec-002" }
         assertNotNull("rec-002 harus ada di hasil", chickenRec)
         if (chickenRec != null) {
-            assertEquals(3, chickenRec.matchedCount)
-            assertEquals(3, chickenRec.totalIngredients)
-            assertEquals(0, chickenRec.missingIngredients.size)
-            assertEquals(100.0, chickenRec.matchPercentage, 0.1)
+            // Debug: print actual values
+            println("DEBUG rec-002:")
+            println("  matchedCount: ${chickenRec.matchedCount}")
+            println("  totalIngredients: ${chickenRec.totalIngredients}")
+            println("  missingIngredients: ${chickenRec.missingIngredients}")
+            println("  matchPercentage: ${chickenRec.matchPercentage}")
+            println("  matchedIngredients: ${chickenRec.matchedIngredients}")
+            
+            // UPDATED: After IngredientParser fix, all 3 ingredients match!
+            assertEquals("rec-002 matchedCount should be 3 (all matched after parser fix)", 3, chickenRec.matchedCount)
+            assertEquals("rec-002 totalIngredients should be 3", 3, chickenRec.totalIngredients)
+            assertEquals("rec-002 missingIngredients should be 0", 0, chickenRec.missingIngredients.size)
+            assertEquals("rec-002 matchPercentage should be 100%", 100.0, chickenRec.matchPercentage, 0.1)
         }
 
         // rec-003 (Tomato Basil Soup): tomato, basil, olive oil, onion → tidak ada di pantry user 1
@@ -229,14 +244,14 @@ class RecommendationTest {
 
         val (recs, _) = service.getRecommendations(userId = 1, limit = 10)
 
-        // rec-002 (100% match, 3 bahan) VS rec-001 (4/5 = 80% match, 4 bahan cocok)
-        // Score rec-002 = 100 + 3*5 = 115
-        // Score rec-001 = 80 + 4*5 = 100
+        // UPDATED BEHAVIOR (after IngredientParser fix):
+        // rec-002 (Chicken Garlic Stir Fry): 3/3 matched (all ingredients) = 100% + 3*5 = 115 points
+        // rec-001 (Creamy Garlic Pasta): 4/5 matched (missing salt) = 80% + 4*5 = 100 points
         // Jadi rec-002 harus di atas rec-001
         assertTrue(recs.size >= 2)
         val firstId = recs[0].recipe.id
         val secondId = recs[1].recipe.id
-        assertEquals("rec-002 harus di posisi 1", "rec-002", firstId)
+        assertEquals("rec-002 harus di posisi 1 (100% match, higher score)", "rec-002", firstId)
         assertEquals("rec-001 harus di posisi 2", "rec-001", secondId)
     }
 

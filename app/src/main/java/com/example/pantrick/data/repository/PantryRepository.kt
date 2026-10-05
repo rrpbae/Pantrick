@@ -25,6 +25,12 @@ class PantryRepository(private val preferences: PantrickPreferences) {
         Log.d(TAG, "Added item: ${item.name} for user: $email, total items: ${currentItems.size}")
         return currentItems
     }
+    
+    // [Materi: Batch Save] Simpan seluruh list items (untuk caching dari backend)
+    fun saveItems(email: String, items: List<PantryItem>) {
+        preferences.savePantryItems(email, items)
+        Log.d(TAG, "Saved ${items.size} items for user: $email")
+    }
 
     // [Materi: Update Item Action] Memperbarui bahan yang sudah ada dengan ID tetap
     fun updateItem(email: String, item: PantryItem): List<PantryItem> {

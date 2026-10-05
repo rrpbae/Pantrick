@@ -107,8 +107,23 @@ class CookingSessionService(
                 val pantryId = avail.pantryItemId ?: continue
                 val pantryItem = pantryRepository.getItemById(pantryId) ?: continue
 
+                // Calculate quantity to use based on recipe requirement
                 val qtyUsed = if (avail.isQuantityComparable && avail.recipeQtyParsed != null) {
-                    avail.recipeQtyParsed
+                    // Convert recipe quantity to pantry unit for proper deduction
+                    val recipeUnit = avail.recipeUnit ?: "pcs"
+                    val recipeInBaseUnit = QuantityComparisonService.toBaseUnit(avail.recipeQtyParsed, recipeUnit)
+                    val pantryInBaseUnit = QuantityComparisonService.toBaseUnit(pantryItem.quantity, pantryItem.unit)
+                    
+                    // Calculate how much to deduct in pantry's unit
+                    val unitGroup = QuantityComparisonService.getUnitGroup(pantryItem.unit)
+                    if (unitGroup != null && unitGroup == QuantityComparisonService.getUnitGroup(recipeUnit)) {
+                        // Units compatible - calculate proportional deduction
+                        val ratio = recipeInBaseUnit / pantryInBaseUnit
+                        pantryItem.quantity * ratio
+                    } else {
+                        // Units not compatible - use recipe quantity directly
+                        avail.recipeQtyParsed
+                    }
                 } else {
                     // Unit tidak bisa dibandingkan: anggap 1 unit digunakan
                     1.0
@@ -237,16 +252,25 @@ class CookingSessionService(
     ): IngredientAvailability {
         val ingNorm = ing.normalizedName
 
-        // Gunakan matching logic yang sama dengan RecommendationService
-        // untuk konsistensi hasil antara recommendation dan cooking readiness
+        // DEBUG LOG
+        println("DEBUG [buildAvailability] Recipe ingredient: raw='${ing.raw}', normalized='$ingNorm', qty='${ing.quantity}', unit='${ing.unit}'")
+        println("DEBUG [buildAvailability] Checking against ${pantryItems.size} pantry items")
+
+        // Use shared IngredientMatchingService for consistency with RecommendationService
         val matched = pantryItems
             .filter { !it.isConsumed && it.quantity > 0 }
             .firstOrNull { pantry ->
-                val pNorm = pantry.normalizedName
-                isIngredientMatch(ingNorm, pNorm)
+                val pNorm = pantry.normalizedName.ifBlank { 
+                    IngredientParser.normalizeIngredientName(pantry.name) 
+                }
+                println("DEBUG [buildAvailability]   Pantry: name='${pantry.name}', normalized='$pNorm', qty=${pantry.quantity}, unit='${pantry.unit}'")
+                val isMatch = IngredientMatchingService.isIngredientMatch(ingNorm, pNorm)
+                println("DEBUG [buildAvailability]   Match result: $isMatch")
+                isMatch
             }
 
         if (matched == null) {
+            println("DEBUG [buildAvailability] NO MATCH FOUND for '${ing.raw}'")
             return IngredientAvailability(
                 ingredientRaw = ing.raw,
                 pantryItemId = null,
@@ -262,26 +286,17 @@ class CookingSessionService(
             )
         }
 
-        // Parse recipe quantity
-        val recipeQtyParsed = parseFraction(ing.quantity)
+        println("DEBUG [buildAvailability] MATCHED with pantry item: id='${matched.id}', name='${matched.name}'")
 
-        // Compare quantity if both have compatible units
-        val (comparable, sufficient) = if (recipeQtyParsed == null || ing.unit == null) {
-            // Tidak ada quantity/unit di recipe → name match saja sudah cukup
-            Pair(false, true)
-        } else {
-            val unitGroup = getUnitGroup(ing.unit)
-            val pantryUnitGroup = getUnitGroup(matched.unit)
-            if (unitGroup == null || pantryUnitGroup == null || unitGroup != pantryUnitGroup) {
-                // Unit tidak kompatibel → tidak bisa dibandingkan, anggap sufficient
-                Pair(false, true)
-            } else {
-                // Convert ke unit dasar lalu bandingkan
-                val recipeBaseQty = toBaseUnit(recipeQtyParsed, ing.unit)
-                val pantryBaseQty = toBaseUnit(matched.quantity, matched.unit)
-                Pair(true, pantryBaseQty >= recipeBaseQty)
-            }
-        }
+        // Use shared QuantityComparisonService for quantity comparison
+        val qtyComparison = QuantityComparisonService.compareQuantities(
+            recipeQty = ing.quantity,
+            recipeUnit = ing.unit,
+            pantryQty = matched.quantity,
+            pantryUnit = matched.unit
+        )
+
+        println("DEBUG [buildAvailability] Quantity comparison: comparable=${qtyComparison.isComparable}, sufficient=${qtyComparison.isSufficient}")
 
         return IngredientAvailability(
             ingredientRaw = ing.raw,
@@ -291,160 +306,10 @@ class CookingSessionService(
             pantryUnit = matched.unit,
             recipeQtyStr = ing.quantity,
             recipeUnit = ing.unit,
-            recipeQtyParsed = recipeQtyParsed,
-            isSufficientQty = sufficient,
+            recipeQtyParsed = qtyComparison.recipeQtyParsed,
+            isSufficientQty = qtyComparison.isSufficient,
             isNameMatched = true,
-            isQuantityComparable = comparable
+            isQuantityComparable = qtyComparison.isComparable
         )
-    }
-
-    // ======================================================================
-    // UNIT CONVERSION HELPERS
-    // ======================================================================
-
-    private enum class UnitGroup { WEIGHT, VOLUME, COUNT }
-
-    private fun getUnitGroup(unit: String?): UnitGroup? {
-        if (unit == null) return null
-        return when (unit.trim().lowercase()) {
-            "g", "gram", "grams", "kg", "kilogram", "kilograms",
-            "oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds" -> UnitGroup.WEIGHT
-
-            "ml", "milliliter", "milliliters", "millilitre",
-            "l", "liter", "liters", "litre",
-            "cup", "cups", "tsp", "teaspoon", "teaspoons",
-            "tbsp", "tablespoon", "tablespoons" -> UnitGroup.VOLUME
-
-            "pcs", "piece", "pieces", "unit", "units", "whole",
-            "clove", "cloves", "slice", "slices", "head", "heads",
-            "bunch", "bunches", "stalk", "stalks", "sprig", "sprigs",
-            "can", "cans", "bottle", "bottles", "package", "packages",
-            "stick", "sticks" -> UnitGroup.COUNT
-
-            else -> null
-        }
-    }
-
-    /** Konversi ke unit dasar: gram (weight), ml (volume), pcs (count) */
-    private fun toBaseUnit(qty: Double, unit: String): Double {
-        return when (unit.trim().lowercase()) {
-            "kg", "kilogram", "kilograms" -> qty * 1000
-            "oz", "ounce", "ounces" -> qty * 28.35
-            "lb", "lbs", "pound", "pounds" -> qty * 453.59
-            "l", "liter", "liters", "litre" -> qty * 1000
-            "cup", "cups" -> qty * 240
-            "tbsp", "tablespoon", "tablespoons" -> qty * 15
-            "tsp", "teaspoon", "teaspoons" -> qty * 5
-            else -> qty // g, ml, pcs — sudah base unit
-        }
-    }
-
-    /**
-     * Parse fraction string ke Double.
-     * Mendukung: "1", "1.5", "1/2", "1 1/2", "¼", "½", "¾", "⅓", "⅔"
-     */
-    private fun parseFraction(input: String?): Double? {
-        if (input.isNullOrBlank()) return null
-
-        // Replace unicode fractions
-        val normalized = input.trim()
-            .replace("¼", "1/4").replace("½", "1/2").replace("¾", "3/4")
-            .replace("⅓", "1/3").replace("⅔", "2/3")
-            .replace("⅛", "1/8").replace("⅜", "3/8").replace("⅝", "5/8").replace("⅞", "7/8")
-            // Remove garbage unicode chars (like "A½" → just take numeric part)
-            .replace(Regex("[^0-9/. ]"), "").trim()
-
-        if (normalized.isBlank()) return null
-
-        // Try simple double parse first
-        normalized.toDoubleOrNull()?.let { return it }
-
-        val parts = normalized.split(" ").filter { it.isNotBlank() }
-        return when {
-            parts.size == 2 -> {
-                // "1 1/2" → 1 + 0.5
-                val whole = parts[0].toDoubleOrNull() ?: return null
-                val frac = parseSingleFraction(parts[1]) ?: return null
-                whole + frac
-            }
-            parts.size == 1 -> parseSingleFraction(parts[0])
-            else -> null
-        }
-    }
-
-    private fun parseSingleFraction(s: String): Double? {
-        if ('/' !in s) return s.toDoubleOrNull()
-        val slashIdx = s.indexOf('/')
-        val num = s.substring(0, slashIdx).toDoubleOrNull() ?: return null
-        val den = s.substring(slashIdx + 1).toDoubleOrNull() ?: return null
-        if (den == 0.0) return null
-        return num / den
-    }
-    
-    // ======================================================================
-    // INGREDIENT MATCHING HELPERS (shared logic with RecommendationService)
-    // ======================================================================
-    
-    /**
-     * Check if ingredient matches pantry item name.
-     * Uses same logic as RecommendationService for consistency.
-     */
-    private fun isIngredientMatch(ingNorm: String, pantryNorm: String): Boolean {
-        // Exact match
-        if (ingNorm == pantryNorm) return true
-        
-        // Word boundary match: avoid "rice" matching "licorice"
-        val ingWords = ingNorm.split(Regex("\\s+"))
-        val pantryWords = pantryNorm.split(Regex("\\s+"))
-        
-        // Check if pantryName is a word in ingredient (e.g., "chicken" in "chicken breast")
-        if (ingWords.any { it == pantryNorm }) return true
-        
-        // Check if ingredient is a word in pantryName (e.g., "breast" in "chicken breast")
-        if (pantryWords.any { it == ingNorm }) return true
-        
-        // Fuzzy match for close variations (e.g., "tomato" vs "tomatoes")
-        return isFuzzyMatch(ingNorm, pantryNorm)
-    }
-    
-    /**
-     * Fuzzy match untuk menangani plural/singular dan typo kecil.
-     */
-    private fun isFuzzyMatch(a: String, b: String): Boolean {
-        // Handle plural: remove trailing 's', 'es'
-        val aStem = a.removeSuffix("es").removeSuffix("s")
-        val bStem = b.removeSuffix("es").removeSuffix("s")
-        
-        if (aStem == bStem) return true
-        
-        // Levenshtein distance for close matches
-        val distance = levenshteinDistance(a, b)
-        val maxLen = maxOf(a.length, b.length)
-        if (maxLen == 0) return false
-        
-        val similarity = 1.0 - (distance.toDouble() / maxLen)
-        return similarity >= 0.85 // 85% similarity threshold
-    }
-    
-    /**
-     * Calculate Levenshtein distance between two strings.
-     */
-    private fun levenshteinDistance(a: String, b: String): Int {
-        val costs = IntArray(b.length + 1) { it }
-        
-        for (i in 1..a.length) {
-            var lastValue = i
-            for (j in 1..b.length) {
-                val newValue = costs[j]
-                costs[j] = if (a[i - 1] == b[j - 1]) {
-                    lastValue
-                } else {
-                    1 + minOf(lastValue, newValue, costs[j - 1])
-                }
-                lastValue = newValue
-            }
-        }
-        
-        return costs[b.length]
     }
 }

@@ -210,8 +210,6 @@ fun RecipeCard(
         badgeText = if (isComplete) "Siap dimasak" else "",
         badgeBgColor = Color(0xFFE8F2EA),
         badgeTextColor = ColorForestGreen,
-        time = "${recipe.durationMinutes} mnt",
-        cals = "${recipe.servings} porsi",
         prep = recipe.usesLabel.ifBlank { "Bahan Dapur" },
         prepIcon = Icons.Rounded.Restaurant,
         prepColor = ColorTextSubtitleBrown,
@@ -221,7 +219,8 @@ fun RecipeCard(
         buttonText = "Lihat Resep >",
         buttonBgColor = ColorForestGreen,
         buttonTextColor = ColorSurfaceWhite,
-        imageRes = recipe.imageRes,
+        recipeId = recipe.id,
+        imageName = recipe.imageName,
         isFavorite = true,
         onFavoriteClick = onFavoriteClick,
         onClick = onClick
@@ -236,8 +235,6 @@ fun RecipeCard(
     badgeText: String,
     badgeBgColor: Color = ColorSurfaceWhite,
     badgeTextColor: Color = ColorDarkChocolate,
-    time: String,
-    cals: String,
     prep: String,
     prepIcon: ImageVector,
     prepColor: Color = ColorTextSubtitleBrown,
@@ -248,7 +245,8 @@ fun RecipeCard(
     buttonIcon: ImageVector? = null,
     buttonBgColor: Color,
     buttonTextColor: Color,
-    imageRes: Int = R.drawable.ic_placeholder_pasta,
+    recipeId: String,
+    imageName: String? = null,
     isFavorite: Boolean = true,
     onFavoriteClick: () -> Unit = {},
     onClick: () -> Unit
@@ -260,6 +258,11 @@ fun RecipeCard(
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Gambar resep dari backend dataset
+            val imageUrl = if (!imageName.isNullOrBlank()) {
+                "${com.example.pantrick.core.network.PantrickApiConfig.BASE_URL}/api/recipes/${imageName}/image"
+            } else null
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -267,12 +270,23 @@ fun RecipeCard(
                     .clip(RoundedCornerShape(16.dp))
                     .background(ColorPlaceholder.copy(alpha = 0.3f))
             ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (imageUrl != null) {
+                    coil.compose.AsyncImage(
+                        model = imageUrl,
+                        contentDescription = title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        error = painterResource(id = R.drawable.ic_placeholder_pasta),
+                        placeholder = painterResource(id = R.drawable.ic_placeholder_pasta)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_placeholder_pasta),
+                        contentDescription = title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 Surface(
                     color = matchBgColor.copy(alpha = 0.9f),
@@ -328,19 +342,8 @@ fun RecipeCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Hanya tampilkan prep/kategori bahan
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Timer, contentDescription = null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(time, fontSize = 11.sp, color = ColorTextSubtitleBrown)
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = ColorTextSubtitleBrown, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(cals, fontSize = 11.sp, color = ColorTextSubtitleBrown)
-
-                Spacer(modifier = Modifier.width(12.dp))
-
                 Icon(prepIcon, contentDescription = null, tint = prepColor, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(prep, fontSize = 11.sp, color = prepColor, fontWeight = if (prepColor == ColorForestGreen) FontWeight.Bold else FontWeight.Normal)

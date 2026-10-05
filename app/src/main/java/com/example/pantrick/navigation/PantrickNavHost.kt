@@ -173,6 +173,7 @@ fun PantrickNavHost(
                     savedRecipes = savedRecipes,
                     onToggleSaveRecipe = { recipeViewModel.toggleSaveRecipe(it) },
                     photoPath = photoPath,
+                    jwtToken = jwtToken ?: "",
                     contentPadding = innerPadding,
                     onNotificationClick = { navController.navigate(NotificationRoute) { launchSingleTop = true } },
                     onProfileClick = { navController.navigate(ProfileRoute) { popUpTo(HomeRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },

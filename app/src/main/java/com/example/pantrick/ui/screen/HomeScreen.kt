@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,13 +46,14 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pantrick.R
 import com.example.pantrick.core.ui.theme.ColorDarkChocolate
 import com.example.pantrick.core.ui.theme.ColorForestGreen
 import com.example.pantrick.core.ui.theme.PantrickTheme
 import com.example.pantrick.data.model.PantryItem
 import com.example.pantrick.data.model.Recipe
-import com.example.pantrick.data.model.RecipeCatalog
+import com.example.pantrick.data.model.RecipeIngredient
 import com.example.pantrick.data.model.StorageLocation
 import com.example.pantrick.data.model.User
 import com.example.pantrick.ui.component.EmptyPantryState
@@ -60,6 +63,8 @@ import com.example.pantrick.ui.component.HomeHeader
 import com.example.pantrick.ui.component.IngredientDetailSheet
 import com.example.pantrick.ui.component.RecipePairingSection
 import com.example.pantrick.ui.component.SummaryCardsRow
+import com.example.pantrick.ui.viewmodel.HomeViewModel
+import com.example.pantrick.ui.viewmodel.RecommendationUiState
 import com.example.pantrick.util.PantrickConstants
 import java.time.LocalDate
 import java.util.Calendar
@@ -78,6 +83,8 @@ fun HomeScreen(
     onNavigateToAdd: () -> Unit = {},
     onNavigateToPantry: () -> Unit = {},
     onNavigateToRecipeDetail: (String) -> Unit = {},
+    jwtToken: String = "",
+    homeViewModel: HomeViewModel = viewModel(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     modifier: Modifier = Modifier
 ) {
@@ -102,9 +109,59 @@ fun HomeScreen(
         items.sortedByDescending { it.id.toLongOrNull() ?: 0L }.take(5)
     }
 
-    // Rekomendasi resep dihitung dari bahan yang ada di pantry pengguna
-    val matchedRecipe = remember(items) {
-        RecipeCatalog.findBestMatch(items, RecipeCatalog.MIN_RECIPE_MATCH_PERCENT)
+    // Load recommendations dari backend saat screen dibuka dan saat pantry berubah
+    val recommendationState by homeViewModel.recommendationState.collectAsState()
+    
+    LaunchedEffect(items.size, jwtToken) {
+        if (jwtToken.isNotBlank() && items.isNotEmpty()) {
+            Log.d(TAG, "Loading recommendations from backend (pantry size: ${items.size})")
+            homeViewModel.loadRecommendations(jwtToken = jwtToken, limit = 10)
+        } else if (items.isEmpty()) {
+            Log.d(TAG, "Pantry empty, resetting recommendation state")
+            homeViewModel.resetState()
+        }
+    }
+
+    // Convert top BackendRecommendation to local Recipe model for compatibility with RecipePairingSection
+    val matchedRecipe = remember(recommendationState) {
+        when (val state = recommendationState) {
+            is RecommendationUiState.Success -> {
+                if (state.recommendations.isNotEmpty()) {
+                    val backendRec = state.recommendations.first()
+                    Recipe(
+                        id = backendRec.recipe.id,
+                        title = backendRec.recipe.title,
+                        description = backendRec.recipe.instructions.take(150),
+                        durationMinutes = backendRec.recipe.cookingTimeMinutes ?: 0,
+                        servings = backendRec.recipe.servings ?: 0,
+                        matchPercent = backendRec.matchPercentage.toInt(),
+                        usesLabel = when (backendRec.status) {
+                            "READY" -> "Semua bahan tersedia"
+                            "PARTIAL" -> "Bahan hampir lengkap"
+                            else -> "Perlu beberapa bahan"
+                        },
+                        readyCount = backendRec.matchedCount,
+                        totalCount = backendRec.totalIngredients,
+                        missingIngredient = if (backendRec.missingIngredients.isNotEmpty()) {
+                            backendRec.missingIngredients.first()
+                        } else {
+                            "Lengkap"
+                        },
+                        imageName = backendRec.recipe.imageName,
+                        hasImage = backendRec.recipe.hasImage,
+                        ingredients = backendRec.recipe.ingredients.map { ing ->
+                            RecipeIngredient(
+                                name = ing.displayName,
+                                amount = "${ing.quantity ?: ""} ${ing.unit ?: ""}".trim(),
+                                keyword = ing.normalizedName
+                            )
+                        },
+                        steps = backendRec.recipe.instructions.split("\n").filter { it.isNotBlank() }
+                    )
+                } else null
+            }
+            else -> null
+        }
     }
 
     val isFavorite = remember(matchedRecipe, savedRecipes) {
@@ -131,6 +188,7 @@ fun HomeScreen(
         selectedItem = selectedItem,
         blurRadius = blurRadius,
         photoPath = photoPath,
+        recommendationState = recommendationState,
         onFavoriteToggle = {
             matchedRecipe?.let { recipe ->
                 onToggleSaveRecipe(recipe)
@@ -155,6 +213,11 @@ fun HomeScreen(
         onPlanMealClick = {
             Log.d(TAG, "Plan meal clicked for recipe: ${matchedRecipe?.title}")
         },
+        onRetryRecommendation = {
+            if (jwtToken.isNotBlank()) {
+                homeViewModel.retryLoad(jwtToken = jwtToken)
+            }
+        },
         contentPadding = contentPadding,
         modifier = modifier
     )
@@ -173,6 +236,7 @@ fun StatelessHomeContent(
     selectedItem: PantryItem? = null,
     blurRadius: Dp = 0.dp,
     photoPath: String? = null,
+    recommendationState: RecommendationUiState = RecommendationUiState.Idle,
     onFavoriteToggle: () -> Unit,
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit,
@@ -183,6 +247,7 @@ fun StatelessHomeContent(
     onDismissDetail: () -> Unit = {},
     onCookNowClick: () -> Unit,
     onPlanMealClick: () -> Unit,
+    onRetryRecommendation: () -> Unit = {},
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
@@ -364,21 +429,20 @@ fun HomeScreenPreview() {
         PantryItem("2", "Daging Ayam", StorageLocation.FREEZER, "500 gr", LocalDate.now().plusDays(2).toEpochDay()),
         PantryItem("3", "Telur Ayam", StorageLocation.KULKAS, "6 butir", LocalDate.now().plusDays(10).toEpochDay())
     )
-    val sampleRecipe = RecipeCatalog.recipes.firstOrNull()?.let {
-        Recipe(
-            id = it.id,
-            title = it.title,
-            description = it.description,
-            durationMinutes = it.durationMinutes,
-            servings = it.servings,
-            matchPercent = 50,
-            usesLabel = "Cocok dengan bahanmu",
-            readyCount = 2,
-            totalCount = 4,
-            missingIngredient = "Keju",
-            imageRes = it.imageRes
-        )
-    }
+    val sampleRecipe = Recipe(
+        id = "sample-1",
+        title = "Pasta Krim Bawang Putih",
+        description = "Pasta saus krim lembut kaya rasa dengan aroma bawang putih gurih",
+        durationMinutes = 20,
+        servings = 2,
+        matchPercent = 80,
+        usesLabel = "Semua bahan tersedia",
+        readyCount = 4,
+        totalCount = 4,
+        missingIngredient = "Lengkap",
+        imageName = "pasta-garlic",
+        hasImage = true
+    )
     PantrickTheme {
         StatelessHomeContent(
             userName = "Budi Santoso",
